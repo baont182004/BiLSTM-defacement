@@ -1,42 +1,64 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 
-async function getAndSaveDefacedUrls() {
+async function getAndSaveSequentialDefacedUrls() {
+    // --- CẤU HÌNH ---
+    const START_ID = 41478976; // ID bắt đầu quét lùi
+    const OUTPUT_FILE = 'defacement_url.txt'; // Ghi vào tệp gốc
+    // -----------------
+
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: false, // Giữ lại để xử lý captcha nếu cần
         slowMo: 50,
         defaultViewport: null,
         args: ['--start-maximized']
     });
 
     const page = await browser.newPage();
-    const OUTPUT_FILE = 'defacement_url.txt';
 
+    // --- KIỂM TRA TRÙNG LẶP ---
+    const existingDomains = new Set();
     if (fs.existsSync(OUTPUT_FILE)) {
-        console.log(`📄 Tìm thấy ${OUTPUT_FILE}, sẽ ghi nối tiếp.`);
+        console.log(`📄 Tìm thấy ${OUTPUT_FILE}, sẽ đọc và ghi nối tiếp.`);
+        const fileContent = fs.readFileSync(OUTPUT_FILE, 'utf-8');
+        fileContent.split('\n').forEach(line => {
+            const domain = line.trim();
+            if (domain) {
+                existingDomains.add(domain);
+            }
+        });
+        console.log(`🔍 Đã tải ${existingDomains.size} domain đã có vào bộ nhớ đệm.`);
     } else {
         console.log(`🆕 Tạo mới tệp ${OUTPUT_FILE}.`);
     }
+    // ---------------------------
 
-    for (let attempt = 41471031; attempt > 41471031 - 1000; attempt--) {
-        const url = `https://www.zone-h.org/mirror/id/${attempt}`;
-        console.log(`🟢 Truy cập: ${url}`);
+    let fetchedCount = 0; // Đếm số domain MỚI đã lấy trong phiên này
+    let currentId = START_ID; // ID hiện tại đang quét
+
+    console.log(`🚀 Bắt đầu quét lùi từ ID ${START_ID} và ghi vào ${OUTPUT_FILE}...`);
+    console.log("   Nhấn Ctrl+C để dừng.");
+
+    // --- VÒNG LẶP VÔ HẠN (QUÉT LÙI) ---
+    while (currentId >= 1) { // Quét cho đến ID 1
+        const url = `https://www.zone-h.org/mirror/id/${currentId}`;
+        console.log(`\n[Đã thêm mới: ${fetchedCount}] 📉 Quét ID: ${currentId}`);
 
         try {
-            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
-            // 1. Kiểm tra xem có captcha không
+            // 1. Kiểm tra captcha (giữ nguyên)
             const isCaptcha = await page.$('img[src*="captcha"]');
             if (isCaptcha) {
-                console.log('🛑 Phát hiện CAPTCHA — vui lòng nhập tay và nhấn "Gửi" trong trình duyệt.');
+                console.log('⏳ Phát hiện CAPTCHA — vui lòng nhập tay và nhấn "Gửi" trong trình duyệt.');
                 await page.waitForFunction(
                     () => !document.querySelector('img[src*="captcha"]'),
                     { timeout: 120000 } // chờ tối đa 2 phút
                 );
-                console.log('✅ CAPTCHA đã qua — tiếp tục thu thập dữ liệu...');
+                console.log('👍 CAPTCHA đã qua — tiếp tục...');
             }
 
-            // 2. Trích thông tin từ mirror nếu captcha đã vượt
+            // 2. Trích thông tin domain (giữ nguyên)
             const domainText = await page.evaluate(() => {
                 const el = [...document.querySelectorAll("li")].find(e =>
                     e.textContent.includes("Domain:")
@@ -46,19 +68,47 @@ async function getAndSaveDefacedUrls() {
 
             if (domainText) {
                 const extracted = domainText.split('Domain:')[1].split('IP address:')[0].trim();
-                fs.appendFileSync(OUTPUT_FILE, extracted + '\n');
-                console.log(`✅ Đã lưu: ${extracted}\n`);
+                if (extracted) {
+                    // --- KIỂM TRA TRÙNG LẶP ---
+                    if (!existingDomains.has(extracted)) {
+                        fs.appendFileSync(OUTPUT_FILE, extracted + '\n');
+                        existingDomains.add(extracted); // Thêm vào bộ nhớ đệm
+                        fetchedCount++; // Tăng bộ đếm mới
+                        console.log(`✅ Đã lưu (MỚI): ${extracted}`);
+                    } else {
+                        console.log(`🔄 Bỏ qua (Đã tồn tại): ${extracted}`);
+                    }
+                    // ---------------------------
+                } else {
+                    console.log('⚠️ Domain trích xuất bị rỗng.');
+                }
             } else {
-                console.log('⚠️ Không tìm thấy domain trong trang.');
+                console.log('🚫 Không tìm thấy mục "Domain:" trên trang (ID có thể không tồn tại).');
             }
 
         } catch (err) {
-            console.log(`❌ Lỗi với ID ${attempt}: ${err.message}`);
+            console.log(`❌ Lỗi với ID ${currentId}: ${err.message.split('\n')[0]}`);
+            // Dừng một chút sau lỗi
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        } finally {
+            // Giảm ID cho lần lặp tiếp theo
+            currentId--;
+            // Thêm một khoảng dừng nhỏ giữa các lần request để tránh làm quá tải server
+            await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
         }
-    }
+    } // Kết thúc vòng lặp while
 
+    console.log('\n🏁 Đã quét đến ID 1.');
     await browser.close();
-    console.log('🎉 Quét hoàn tất!');
+    console.log(`🎉 Script đã hoàn tất quét lùi.`);
 }
 
-getAndSaveDefacedUrls();
+// Bắt sự kiện Ctrl+C
+process.on('SIGINT', async () => {
+    console.log("\n🛑 Đã nhận tín hiệu dừng (Ctrl+C). Đang đóng trình duyệt...");
+    // Việc đóng trình duyệt an toàn khi Ctrl+C vẫn phức tạp,
+    // nên chỉ cần thoát tiến trình. Dữ liệu đã được ghi liên tục.
+    process.exit(0);
+});
+
+getAndSaveSequentialDefacedUrls();
