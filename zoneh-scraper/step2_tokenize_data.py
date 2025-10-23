@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 import numpy as np
 import os
@@ -14,7 +15,7 @@ OUTPUT_TOKENIZER = 'tokenizer.json'
 MAX_LENGTH = 128
 
 # Kích thước từ vựng (chọn một số đủ lớn, 20.000 là phổ biến)
-VOCAB_SIZE = 20000 
+VOCAB_SIZE = 20000
 OOV_TOKEN = "<OOV>" # Token cho các từ chưa biết (Out-of-Vocabulary)
 # --------------------
 
@@ -23,7 +24,7 @@ print(f"--- BẮT ĐẦU BƯỚC 2: TOKENIZATION & TIỀN XỬ LÝ ---")
 # --- 1. Kiểm tra và Đọc file rawData.json ---
 if not os.path.exists(INPUT_FILE):
     print(f"LỖI: Không tìm thấy tệp '{INPUT_FILE}'.")
-    print("Vui lòng đảm bảo bạn đã chạy script 'step1_extract_text.py' thành công và tệp 'rawData.json' nằm trong cùng thư mục.")
+    print("Vui lòng đảm bảo bạn đã chạy script 'step1' thành công và tệp 'rawData.json' nằm trong cùng thư mục.")
     exit()
 
 print(f"Đang tải tệp đầu vào: {INPUT_FILE}")
@@ -41,7 +42,6 @@ if not data:
 print(f"Đã tải thành công {len(data)} mẫu dữ liệu.")
 
 # --- 2. Tách văn bản và nhãn ---
-# Lọc ra các mẫu có văn bản (không bị rỗng)
 valid_data = [item for item in data if item.get('text') and item.get('label') is not None]
 texts = [item['text'] for item in valid_data]
 labels = [item['label'] for item in valid_data]
@@ -53,32 +53,20 @@ print(f"Tổng số mẫu hợp lệ để xử lý: {len(texts)}")
 
 # --- 3. Tokenization & Ánh xạ số nguyên ---
 print(f"Đang xây dựng từ điển (Tokenizer) với {VOCAB_SIZE} từ...")
-# num_words=VOCAB_SIZE: Chỉ giữ lại 20.000 từ phổ biến nhất
 tokenizer = Tokenizer(num_words=VOCAB_SIZE, oov_token=OOV_TOKEN)
-
-# Xây dựng từ vựng (ví dụ: 'hacked' -> 1, 'website' -> 2)
-# Đây là bước "đi một vòng"
 tokenizer.fit_on_texts(texts)
-
-# Chuyển văn bản thành chuỗi các số nguyên
-# Đây là bước "quay lại"
 sequences = tokenizer.texts_to_sequences(texts)
 print("Đã chuyển văn bản thành chuỗi số nguyên.")
 
 # --- 4. Padding & Truncating (Chuẩn hóa độ dài 128) ---
 print(f"Đang chuẩn hóa độ dài chuỗi thành {MAX_LENGTH} từ...")
-# padding='post': Thêm số 0 vào CUỐI câu nếu thiếu
-# truncating='post': Cắt bỏ từ CUỐI câu nếu thừa (để giữ 128 từ đầu)
 padded_data = pad_sequences(
-    sequences, 
-    maxlen=MAX_LENGTH, 
-    padding='post', 
+    sequences,
+    maxlen=MAX_LENGTH,
+    padding='post',
     truncating='post'
 )
-
-# Chuyển nhãn thành mảng NumPy
 labels_array = np.array(labels)
-
 print("Chuẩn hóa hoàn tất.")
 
 # --- 5. Lưu kết quả ---
@@ -88,15 +76,26 @@ print(f"Đang lưu dữ liệu đã xử lý ra tệp...")
 np.save(OUTPUT_X, padded_data)
 np.save(OUTPUT_Y, labels_array)
 
-# Lưu lại tokenizer
-# Đây là bước CỰC KỲ QUAN TRỌNG
-# Chúng ta cần chính xác tokenizer này để xử lý các URL mới ở giai đoạn phát hiện
-tokenizer_json = tokenizer.to_json()
-with open(OUTPUT_TOKENIZER, 'w', encoding='utf-8') as f:
-    f.write(json.dumps(tokenizer_json, ensure_ascii=False))
+# Lưu lại tokenizer với định dạng đẹp (indent=4)
+tokenizer_json_string = tokenizer.to_json() # Keras tạo ra chuỗi JSON
+
+try:
+    # Thử giải mã chuỗi JSON từ Keras thành dictionary
+    tokenizer_dict = json.loads(tokenizer_json_string)
+    # Ghi lại dictionary đó với indent=4 để định dạng đẹp
+    with open(OUTPUT_TOKENIZER, 'w', encoding='utf-8') as f:
+        json.dump(tokenizer_dict, f, ensure_ascii=False, indent=4) # <-- THÊM INDENT=4
+    print(f"Đã lưu Từ điển (Tokenizer) vào: {OUTPUT_TOKENIZER} (đã định dạng)")
+
+except json.JSONDecodeError:
+    # Nếu chuỗi từ Keras không phải JSON hợp lệ (hiếm) thì ghi chuỗi gốc
+    print(f"Cảnh báo: Không thể giải mã chuỗi tokenizer từ Keras. Ghi chuỗi gốc.")
+    with open(OUTPUT_TOKENIZER, 'w', encoding='utf-8') as f:
+        f.write(tokenizer_json_string)
+    print(f"Đã lưu Từ điển (Tokenizer) vào: {OUTPUT_TOKENIZER} (dạng chuỗi gốc)")
+
 
 print("\n--- HOÀN TẤT TIỀN XỬ LÝ (BƯỚC 2) ---")
 print(f"Đã lưu dữ liệu X (Văn bản đã xử lý) vào: {OUTPUT_X} (Shape: {padded_data.shape})")
 print(f"Đã lưu dữ liệu Y (nhãn) vào: {OUTPUT_Y} (Shape: {labels_array.shape})")
-print(f"Đã lưu Từ điển (Tokenizer) vào: {OUTPUT_TOKENIZER}")
 print(f"\nGiờ bạn đã sẵn sàng cho Bước 3: Huấn luyện mô hình.")
