@@ -3,7 +3,7 @@ const fs = require('fs');
 
 async function getAndSaveSequentialDefacedUrls() {
     // --- CẤU HÌNH ---
-    const START_ID = 41478824; // ID bắt đầu quét lùi
+    const START_ID = 41416014; // ID bắt đầu quét lùi
     const OUTPUT_FILE = 'defacement_url.txt'; // Ghi vào tệp gốc
     // -----------------
 
