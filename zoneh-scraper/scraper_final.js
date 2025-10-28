@@ -2,13 +2,13 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 
 async function getAndSaveSequentialDefacedUrls() {
-    // --- CẤU HÌNH ---
-    const START_ID = 41416014; // ID bắt đầu quét lùi
-    const OUTPUT_FILE = 'defacement_url.txt'; // Ghi vào tệp gốc
-    // -----------------
+
+    const START_ID = 41416014;
+    const OUTPUT_FILE = 'defacement_url.txt';
+
 
     const browser = await puppeteer.launch({
-        headless: false, // Giữ lại để xử lý captcha nếu cần
+        headless: false,
         slowMo: 50,
         defaultViewport: null,
         args: ['--start-maximized']
@@ -16,7 +16,6 @@ async function getAndSaveSequentialDefacedUrls() {
 
     const page = await browser.newPage();
 
-    // --- KIỂM TRA TRÙNG LẶP ---
     const existingDomains = new Set();
     if (fs.existsSync(OUTPUT_FILE)) {
         console.log(`📄 Tìm thấy ${OUTPUT_FILE}, sẽ đọc và ghi nối tiếp.`);
@@ -31,34 +30,32 @@ async function getAndSaveSequentialDefacedUrls() {
     } else {
         console.log(`🆕 Tạo mới tệp ${OUTPUT_FILE}.`);
     }
-    // ---------------------------
 
-    let fetchedCount = 0; // Đếm số domain MỚI đã lấy trong phiên này
-    let currentId = START_ID; // ID hiện tại đang quét
+
+    let fetchedCount = 0;
+    let currentId = START_ID;
 
     console.log(`🚀 Bắt đầu quét lùi từ ID ${START_ID} và ghi vào ${OUTPUT_FILE}...`);
     console.log("   Nhấn Ctrl+C để dừng.");
 
-    // --- VÒNG LẶP VÔ HẠN (QUÉT LÙI) ---
-    while (currentId >= 1) { // Quét cho đến ID 1
+
+    while (currentId >= 1) {
         const url = `https://www.zone-h.org/mirror/id/${currentId}`;
         console.log(`\n[Đã thêm mới: ${fetchedCount}] 📉 Quét ID: ${currentId}`);
 
         try {
             await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
 
-            // 1. Kiểm tra captcha (giữ nguyên)
             const isCaptcha = await page.$('img[src*="captcha"]');
             if (isCaptcha) {
                 console.log('⏳ Phát hiện CAPTCHA — vui lòng nhập tay và nhấn "Gửi" trong trình duyệt.');
                 await page.waitForFunction(
                     () => !document.querySelector('img[src*="captcha"]'),
-                    { timeout: 120000 } // chờ tối đa 2 phút
+                    { timeout: 120000 }
                 );
                 console.log('👍 CAPTCHA đã qua — tiếp tục...');
             }
 
-            // 2. Trích thông tin domain (giữ nguyên)
             const domainText = await page.evaluate(() => {
                 const el = [...document.querySelectorAll("li")].find(e =>
                     e.textContent.includes("Domain:")
@@ -69,16 +66,15 @@ async function getAndSaveSequentialDefacedUrls() {
             if (domainText) {
                 const extracted = domainText.split('Domain:')[1].split('IP address:')[0].trim();
                 if (extracted) {
-                    // --- KIỂM TRA TRÙNG LẶP ---
                     if (!existingDomains.has(extracted)) {
                         fs.appendFileSync(OUTPUT_FILE, extracted + '\n');
-                        existingDomains.add(extracted); // Thêm vào bộ nhớ đệm
-                        fetchedCount++; // Tăng bộ đếm mới
+                        existingDomains.add(extracted);
+                        fetchedCount++;
                         console.log(`✅ Đã lưu (MỚI): ${extracted}`);
                     } else {
                         console.log(`🔄 Bỏ qua (Đã tồn tại): ${extracted}`);
                     }
-                    // ---------------------------
+
                 } else {
                     console.log('⚠️ Domain trích xuất bị rỗng.');
                 }
@@ -88,26 +84,25 @@ async function getAndSaveSequentialDefacedUrls() {
 
         } catch (err) {
             console.log(`❌ Lỗi với ID ${currentId}: ${err.message.split('\n')[0]}`);
-            // Dừng một chút sau lỗi
+
             await new Promise(resolve => setTimeout(resolve, 1000));
         } finally {
-            // Giảm ID cho lần lặp tiếp theo
+
             currentId--;
-            // Thêm một khoảng dừng nhỏ giữa các lần request để tránh làm quá tải server
-            await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
+
+            await new Promise(resolve => setTimeout(resolve, 200));
         }
-    } // Kết thúc vòng lặp while
+    }
 
     console.log('\n🏁 Đã quét đến ID 1.');
     await browser.close();
     console.log(`🎉 Script đã hoàn tất quét lùi.`);
 }
 
-// Bắt sự kiện Ctrl+C
+
 process.on('SIGINT', async () => {
     console.log("\n🛑 Đã nhận tín hiệu dừng (Ctrl+C). Đang đóng trình duyệt...");
-    // Việc đóng trình duyệt an toàn khi Ctrl+C vẫn phức tạp,
-    // nên chỉ cần thoát tiến trình. Dữ liệu đã được ghi liên tục.
+
     process.exit(0);
 });
 

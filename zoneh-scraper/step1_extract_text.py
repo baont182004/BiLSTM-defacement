@@ -8,19 +8,18 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
 
-# --- CẤU HÌNH (ĐÃ TỐI ƯU TỐC ĐỘ) ---
 DEFACED_URL_FILE = 'defacement_url.txt'
 NORMAL_URL_FILE = 'normal_url.txt'
 OUTPUT_JSON_FILE = 'rawData.json'
 SCRAPER_JS_FILE = 'get_text_puppeteer.js' 
-MAX_WORKERS = 10     # <-- TĂNG SỐ LUỒNG SONG SONG (Tăng lên 15 hoặc 20 nếu máy bạn mạnh)
-PROCESS_TIMEOUT = 25 # Giảm một chút (từ 30)
-REQUEST_TIMEOUT = 8  # Giảm một chút (từ 10)
+MAX_WORKERS = 10   
+PROCESS_TIMEOUT = 25 
+REQUEST_TIMEOUT = 8  
 REQUEST_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
-# --- 2. Logic Cào dữ liệu (Hybrid) ---
+# --- Logic Cào dữ liệu (Hybrid) ---
 
 # Phương pháp 1 (Ưu tiên): Gọi Node.js/Puppeteer
 def extract_text_primary(url):
@@ -53,11 +52,11 @@ def extract_text_fallback(url):
 def process_url(task):
     url, label = task
     
-    text = extract_text_primary(url) # Ưu tiên Puppeteer
+    text = extract_text_primary(url)
     source = "Puppeteer (JS)"
     
-    if text is None: # Nếu Puppeteer thất bại
-        text = extract_text_fallback(url) # Thử dùng 'curl'
+    if text is None: 
+        text = extract_text_fallback(url)
         source = "Requests (curl)"
     
     if text: 

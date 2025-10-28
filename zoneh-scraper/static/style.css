@@ -1,20 +1,17 @@
-/* Phông chữ */
 @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap");
-
-/* Biến màu chủ đề */
 :root {
   --bg-color: #141414;
-  --card-bg: #1f1f1f; /* Hơi sáng hơn */
+  --card-bg: #1f1f1f;
   --input-bg: #333333;
   --border-color: #444444;
-  --primary-color: #e50914; /* Netflix Red */
+  --primary-color: #e50914;
   --primary-hover: #b81d24;
   --text-primary: #ffffff;
   --text-secondary: #cccccc;
   --text-muted: #aaaaaa;
-  --status-safe: #46d369; /* Green */
-  --status-defaced: var(--primary-color); /* Red */
-  --status-error: #ffa00a; /* Yellow/Orange */
+  --status-safe: #46d369;
+  --status-defaced: var(--primary-color);
+  --status-error: #ffa00a;
 }
 
 body {
@@ -22,9 +19,9 @@ body {
   background-color: var(--bg-color);
   color: var(--text-primary);
   margin: 0;
-  padding: 40px 20px; /* Thêm padding ngang */
+  padding: 40px 20px;
   display: flex;
-  flex-direction: column; /* Cho phép footer */
+  flex-direction: column;
   align-items: center;
   min-height: 100vh;
   box-sizing: border-box;
@@ -36,10 +33,10 @@ body {
   border-radius: 8px;
   box-shadow: 0 4px 25px rgba(0, 0, 0, 0.4);
   width: 100%;
-  max-width: 900px; /* Rộng hơn để chứa 2 cột */
+  max-width: 900px;
   text-align: center;
   border-top: 5px solid var(--primary-color);
-  margin-bottom: 20px; /* Khoảng cách với footer */
+  margin-bottom: 20px;
 }
 
 .logo {
@@ -53,7 +50,7 @@ body {
 }
 
 h2 {
-  font-weight: 400; /* Nhẹ hơn */
+  font-weight: 400;
   color: var(--text-secondary);
   margin-bottom: 35px;
   font-size: 1.1rem;
@@ -62,7 +59,7 @@ h2 {
 .input-group {
   display: flex;
   gap: 10px;
-  margin-bottom: 30px; /* Khoảng cách trước kết quả */
+  margin-bottom: 30px;
 }
 
 #url-input {
@@ -85,16 +82,16 @@ h2 {
 #predict-button {
   padding: 12px 20px;
   font-size: 1rem;
-  font-weight: 500; /* Hơi nhẹ hơn */
+  font-weight: 500;
   background-color: var(--primary-color);
   color: var(--text-primary);
   border: none;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  display: inline-flex; /* Để căn icon và text */
+  display: inline-flex;
   align-items: center;
-  gap: 8px; /* Khoảng cách giữa icon và text */
+  gap: 8px;
 }
 
 #predict-button:hover {
@@ -106,7 +103,6 @@ h2 {
   cursor: not-allowed;
 }
 
-/* Spinner trong nút */
 .spinner {
   display: inline-block;
   width: 16px;
@@ -115,17 +111,16 @@ h2 {
   border-radius: 50%;
   border-top-color: #fff;
   animation: spin 0.6s linear infinite;
-  margin-right: 5px; /* Khoảng cách nhỏ */
+  margin-right: 5px;
 }
 
-/* Khu vực kết quả */
 .result-wrapper {
   margin-top: 30px;
   display: flex;
-  flex-wrap: wrap; /* Cho phép xuống dòng trên màn hình nhỏ */
+  flex-wrap: wrap;
   gap: 25px;
   text-align: left;
-  background-color: rgba(0, 0, 0, 0.2); /* Nền tối hơn chút */
+  background-color: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 25px;
@@ -133,7 +128,7 @@ h2 {
 
 .result-main {
   flex: 1;
-  min-width: 250px; /* Chiều rộng tối thiểu cho cột trái */
+  min-width: 250px;
   font-size: 1rem;
   line-height: 1.7;
 }
@@ -184,7 +179,7 @@ h2 {
 
 .result-details {
   flex: 2;
-  min-width: 300px; /* Chiều rộng tối thiểu cho cột phải */
+  min-width: 300px;
 }
 
 .result-details h4 {
@@ -196,25 +191,24 @@ h2 {
 }
 
 #result-text {
-  background-color: var(--bg-color); /* Nền đen */
+  background-color: var(--bg-color);
   border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 15px;
-  height: 200px; /* Cao hơn chút */
+  height: 200px;
   overflow-y: auto;
   font-family: monospace;
   font-size: 0.85rem;
-  color: #ccc; /* Chữ sáng hơn */
+  color: #ccc;
   white-space: pre-wrap;
   word-wrap: break-word;
   line-height: 1.4;
 }
 
-/* Định dạng màu chữ cho trạng thái */
 #result-status {
   font-size: 1.6rem;
   font-weight: 700;
-  display: block; /* Để chiếm cả dòng */
+  display: block;
   margin-bottom: 5px;
   padding: 5px 0;
 }
@@ -227,13 +221,11 @@ h2 {
 }
 .status-error {
   color: var(--status-error);
-} /* Dùng cho lỗi */
-
-/* Hộp thông báo lỗi */
+}
 .error-box {
   margin-top: 20px;
   padding: 15px;
-  background-color: rgba(255, 160, 10, 0.1); /* Nền vàng nhạt */
+  background-color: rgba(255, 160, 10, 0.1);
   border: 1px solid var(--status-error);
   color: var(--status-error);
   border-radius: 4px;
@@ -241,7 +233,6 @@ h2 {
   font-size: 0.9rem;
 }
 
-/* Loader (không dùng nữa) */
 .loader {
   display: none;
 }
@@ -255,17 +246,16 @@ h2 {
   }
 }
 
-/* Responsive cho màn hình nhỏ */
 @media (max-width: 768px) {
   .container {
     padding: 20px 25px;
     max-width: 95%;
   }
   .input-group {
-    flex-direction: column; /* Xếp chồng lên nhau */
+    flex-direction: column;
   }
   .result-wrapper {
-    flex-direction: column; /* Xếp chồng 2 cột kết quả */
+    flex-direction: column;
   }
   .logo {
     font-size: 1.8rem;

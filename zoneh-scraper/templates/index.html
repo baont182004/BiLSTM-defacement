@@ -3,17 +3,14 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!-- Tên ứng dụng được truyền từ Flask -->
         <title>{{ app_name }} - Phát hiện Defacement</title>
         <link rel="stylesheet"
             href="{{ url_for('static', filename='style.css') }}">
-        <!-- Icon nhỏ trên tab trình duyệt (tùy chọn) -->
         <link rel="icon"
             href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
     </head>
     <body>
         <div class="container">
-            <!-- Logo sử dụng tên ứng dụng -->
             <h1 class="logo">{{ app_name }}</h1>
             <h2>Trình phát hiện Website Deface dựa trên BiLSTM</h2>
 
@@ -58,7 +55,6 @@
                 </div>
             </div>
 
-            <!-- Hiển thị lỗi nếu có -->
             <div id="error-message" class="error-box"
                 style="display: none;"></div>
 
@@ -67,7 +63,7 @@
         <script>
         async function checkUrl() {
             const urlInput = document.getElementById('url-input');
-            const url = urlInput.value.trim(); // Lấy URL và xóa khoảng trắng thừa
+            const url = urlInput.value.trim(); 
             const button = document.getElementById('predict-button');
             const loader = document.getElementById('loader');
             const resultContainer = document.getElementById('result-container');
@@ -85,16 +81,16 @@
             if (!url || !url.startsWith('http')) {
                  errorMessage.innerText = "Lỗi: Vui lòng nhập URL hợp lệ (bắt đầu bằng http:// hoặc https://)";
                  errorMessage.style.display = 'block';
-                 resultContainer.style.display = 'none'; // Ẩn kết quả cũ nếu có lỗi mới
+                 resultContainer.style.display = 'none'; 
                  return;
             }
 
             // Reset trạng thái
-            button.disabled = true; // Vô hiệu hóa nút
-            button.innerHTML = '<span class="spinner"></span> Đang kiểm tra...'; // Thêm spinner vào nút
-            loader.style.display = 'none'; // Không dùng loader riêng nữa
+            button.disabled = true; t
+            button.innerHTML = '<span class="spinner"></span> Đang kiểm tra...'; 
+            loader.style.display = 'none'; 
             resultContainer.style.display = 'none';
-            errorMessage.style.display = 'none'; // Ẩn lỗi cũ
+            errorMessage.style.display = 'none'; 
             resultStatus.className = '';
 
             try {
@@ -120,7 +116,7 @@
                     predictTime.innerText = data.predict_time_ms;
 
                     resultStatus.className = data.status === 'Tấn công Deface' ? 'status-defaced' : 'status-safe';
-                    resultContainer.style.display = 'flex'; // Hiển thị kết quả
+                    resultContainer.style.display = 'flex';
                 }
 
             } catch (error) {
@@ -128,7 +124,6 @@
                 errorMessage.style.display = 'block';
                 resultContainer.style.display = 'none';
             } finally {
-                 // Khôi phục nút về trạng thái ban đầu
                 button.disabled = false;
                 button.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-check" viewBox="0 0 16 16">

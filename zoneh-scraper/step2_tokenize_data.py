@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+
 import json
 import numpy as np
 import os
@@ -11,12 +11,12 @@ OUTPUT_X = 'X_data.npy'
 OUTPUT_Y = 'y_data.npy'
 OUTPUT_TOKENIZER = 'tokenizer.json'
 
-# Thông số từ bài báo
+
 MAX_LENGTH = 128
 
-# Kích thước từ vựng (chọn một số đủ lớn, 20.000 là phổ biến)
+
 VOCAB_SIZE = 20000
-OOV_TOKEN = "<OOV>" # Token cho các từ chưa biết (Out-of-Vocabulary)
+OOV_TOKEN = "<OOV>" 
 # --------------------
 
 print(f"--- BẮT ĐẦU BƯỚC 2: TOKENIZATION & TIỀN XỬ LÝ ---")
@@ -80,15 +80,15 @@ np.save(OUTPUT_Y, labels_array)
 tokenizer_json_string = tokenizer.to_json() # Keras tạo ra chuỗi JSON
 
 try:
-    # Thử giải mã chuỗi JSON từ Keras thành dictionary
+  
     tokenizer_dict = json.loads(tokenizer_json_string)
-    # Ghi lại dictionary đó với indent=4 để định dạng đẹp
+  
     with open(OUTPUT_TOKENIZER, 'w', encoding='utf-8') as f:
-        json.dump(tokenizer_dict, f, ensure_ascii=False, indent=4) # <-- THÊM INDENT=4
+        json.dump(tokenizer_dict, f, ensure_ascii=False, indent=4) 
     print(f"Đã lưu Từ điển (Tokenizer) vào: {OUTPUT_TOKENIZER} (đã định dạng)")
 
 except json.JSONDecodeError:
-    # Nếu chuỗi từ Keras không phải JSON hợp lệ (hiếm) thì ghi chuỗi gốc
+
     print(f"Cảnh báo: Không thể giải mã chuỗi tokenizer từ Keras. Ghi chuỗi gốc.")
     with open(OUTPUT_TOKENIZER, 'w', encoding='utf-8') as f:
         f.write(tokenizer_json_string)

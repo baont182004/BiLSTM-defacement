@@ -1,32 +1,27 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Embedding, Bidirectional, LSTM, Dense, SpatialDropout1D
-# Import callbacks và metrics
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.metrics import Precision, Recall
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
-# Import tiện ích scikit-learn
 from sklearn.metrics import classification_report, confusion_matrix
-import matplotlib.pyplot as plt # Để vẽ biểu đồ
+import matplotlib.pyplot as plt
 import os
 import time
-import math # Để dùng hàm ceil (làm tròn lên)
+import math 
 
 # --- CẤU HÌNH ---
 INPUT_X = 'X_data.npy'
 INPUT_Y = 'y_data.npy'
-# Lưu mô hình tốt nhất dựa trên val_loss
-BEST_MODEL_FILE = 'bilstm_defacement_model.keras'
-HISTORY_PLOT_FILE = 'training_history.png' # Tệp cho biểu đồ
 
-# Thông số từ Bước 2 (PHẢI KHỚP)
+BEST_MODEL_FILE = 'bilstm_defacement_model.keras'
+HISTORY_PLOT_FILE = 'training_history.png' 
+
 VOCAB_SIZE = 20000
 MAX_LENGTH = 128
 
-# Thông số mô hình (Từ tài liệu/Hình 4)
 EMBEDDING_DIM = 64
 LSTM_UNITS = 64
 
@@ -34,7 +29,7 @@ LSTM_UNITS = 64
 TEST_SPLIT_SIZE = 0.2
 VALID_SPLIT_SIZE = 0.25 # -> 60% Train, 20% Valid, 20% Test
 BATCH_SIZE = 64
-EPOCHS = 15 # Tăng nhẹ, EarlyStopping sẽ xử lý
+EPOCHS = 15
 # ------------------------------------
 
 print("--- BẮT ĐẦU BƯỚC 3: HUẤN LUYỆN MÔ HÌNH (NÂNG CAO) ---")
@@ -49,7 +44,7 @@ print(f"Đang tải dữ liệu từ {INPUT_X} và {INPUT_Y}...")
 X = np.load(INPUT_X)
 y = np.load(INPUT_Y)
 num_total_samples = X.shape[0]
-print(f"Đã tải {num_total_samples} mẫu.") # Sẽ in ra 7980 nếu bạn chạy step2 đúng
+print(f"Đã tải {num_total_samples} mẫu.")
 
 # Chuyển đổi nhãn Y sang dạng one-hot
 y_categorical = to_categorical(y, num_classes=2)
@@ -57,7 +52,6 @@ print(f"Đã chuyển đổi nhãn Y sang dạng one-hot.")
 
 # --- 2. Chia Dữ liệu (Train / Validation / Test) ---
 print(f"Đang chia dữ liệu (60% Train, 20% Valid, 20% Test)...")
-# stratify=y_categorical đảm bảo tỷ lệ 0/1 được giữ nguyên trong các tập con
 X_temp, X_test, y_temp, y_test = train_test_split(
     X, y_categorical, test_size=TEST_SPLIT_SIZE, random_state=42, stratify=y_categorical
 )
@@ -68,18 +62,16 @@ num_train_samples = len(X_train)
 num_valid_samples = len(X_valid)
 num_test_samples = len(X_test)
 
-print(f"Kích thước tập Train: {num_train_samples} mẫu") # Sẽ in ~4788
-print(f"Kích thước tập Valid: {num_valid_samples} mẫu") # Sẽ in ~1596
-print(f"Kích thước tập Test:  {num_test_samples} mẫu") # Sẽ in ~1596
+print(f"Kích thước tập Train: {num_train_samples} mẫu") 
+print(f"Kích thước tập Valid: {num_valid_samples} mẫu")
+print(f"Kích thước tập Test:  {num_test_samples} mẫu")
 
 # --- TÍNH TOÁN VÀ IN RA SỐ BƯỚC DỰ KIẾN ---
-# Cập nhật theo số lượng mẫu mới
 expected_steps_per_epoch = math.ceil(num_train_samples / BATCH_SIZE)
-print(f"Với {num_train_samples} mẫu Train và Batch Size = {BATCH_SIZE}, dự kiến sẽ có {expected_steps_per_epoch} bước mỗi epoch.") # Sẽ in 75
+print(f"Với {num_train_samples} mẫu Train và Batch Size = {BATCH_SIZE}, dự kiến sẽ có {expected_steps_per_epoch} bước mỗi epoch.") 
 # --------------------------------------------------
 
 # --- 3. Xây dựng Kiến trúc Mô hình BiLSTM ---
-# (Kiến trúc giữ nguyên, không cần thay đổi)
 print("\nĐang xây dựng kiến trúc mô hình...")
 model = Sequential([
     Embedding(input_dim=VOCAB_SIZE, output_dim=EMBEDDING_DIM, input_length=MAX_LENGTH, name='embedding_input'),
@@ -90,7 +82,6 @@ model = Sequential([
 model.summary()
 
 # --- 4. Biên dịch Mô hình ---
-# (Giữ nguyên)
 print("\nĐang biên dịch mô hình...")
 model.compile(
     loss='categorical_crossentropy',
@@ -99,10 +90,9 @@ model.compile(
 )
 
 # --- 5. Thiết lập Callbacks ---
-# (Giữ nguyên)
 early_stopping = EarlyStopping(
     monitor='val_loss',
-    patience=3, # Có thể tăng lên 4 hoặc 5 nếu muốn kiên nhẫn hơn với dữ liệu lớn
+    patience=3,
     verbose=1,
     restore_best_weights=True
 )
@@ -148,11 +138,10 @@ y_pred_classes = np.argmax(y_pred_probs, axis=1)
 y_test_classes = np.argmax(y_test, axis=1)
 
 print("\nBáo cáo Phân loại (Classification Report):")
-# labels=[0, 1] và target_names giúp đảm bảo thứ tự đúng ngay cả khi 1 lớp bị thiếu trong batch dự đoán (hiếm)
 print(classification_report(y_test_classes, y_pred_classes, labels=[0, 1], target_names=['Bình thường (0)', 'Deface (1)']))
 
 print("\nMa trận Nhầm lẫn (Confusion Matrix):")
-cm = confusion_matrix(y_test_classes, y_pred_classes, labels=[0, 1]) # Chỉ định labels=[0, 1]
+cm = confusion_matrix(y_test_classes, y_pred_classes, labels=[0, 1])
 print("                 Dự đoán: Bình thường(0) | Dự đoán: Deface(1)")
 print("Thực tế: Bình thường(0) | {:<22} | {:<18}".format(cm[0][0], cm[0][1]))
 print("Thực tế: Deface(1)      | {:<22} | {:<18}".format(cm[1][0], cm[1][1]))

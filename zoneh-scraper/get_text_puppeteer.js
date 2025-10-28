@@ -1,8 +1,7 @@
 /*
- * SCRIPT PHỤ TRỢ (CHUYÊN GIA JS)
  * - Nhận 1 URL từ dòng lệnh.
  * - Dùng Puppeteer để cào dữ liệu (chạy JS).
- * - In văn bản thô ra stdout (cho Python).
+ * - In văn bản thô ra stdout 
  */
 const puppeteer = require('puppeteer');
 
@@ -27,17 +26,15 @@ async function getTextFromURL(url) {
 
         await page.goto(url, {
             waitUntil: 'networkidle2',
-            timeout: 20000 // 20 giây
+            timeout: 20000
         });
 
         const rawText = await page.evaluate(() => document.body.innerText);
         const cleanedText = rawText.replace(/(\r\n|\n|\r|\t)/gm, " ").replace(/\s+/g, ' ').trim();
 
-        // In kết quả ra stdout để Python bắt được
         console.log(cleanedText);
 
     } catch (error) {
-        // In lỗi ra stderr để Python bắt được
         console.error(`Lỗi Puppeteer khi cào ${url}: ${error.message}`);
         process.exit(1);
     } finally {
@@ -47,7 +44,6 @@ async function getTextFromURL(url) {
     }
 }
 
-// Lấy URL từ tham số dòng lệnh
 const url = process.argv[2];
 if (!url) {
     console.error('Lỗi: Không có URL nào được cung cấp.');
