@@ -1,4 +1,1 @@
-﻿node_modules/
-.idea/
-__pycache__/
-*.log
+﻿node_modules
