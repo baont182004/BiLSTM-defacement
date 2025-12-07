@@ -1,0 +1,8 @@
+flask
+tensorflow
+numpy
+requests
+beautifulsoup4
+tqdm
+scikit-learn
+matplotlib
