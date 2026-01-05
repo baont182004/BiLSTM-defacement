@@ -194,3 +194,4 @@ export REQUEST_TIMEOUT=20
 - `node_modules/`, `__pycache__/`, `*.npy` thường không commit.
 - `ml/data/raw/rawData.json` có thể rất lớn, nên xem xét trước khi commit.
 - `ml/data/urls/*.txt` có thể bỏ qua nếu không muốn chia sẻ danh sách URL.
+- Trong `ml/artifacts/`, chỉ commit các file `*.png` và `*.keras` để theo dõi mô hình/biểu đồ; các file khác nên bỏ qua.

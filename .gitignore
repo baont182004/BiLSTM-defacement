@@ -12,3 +12,6 @@ ml/data/urls/defacement_url.txt
 
 # Artifacts (uncomment to ignore model outputs)
 # ml/artifacts/
+ml/artifacts/*
+!ml/artifacts/*.png
+!ml/artifacts/*.keras
