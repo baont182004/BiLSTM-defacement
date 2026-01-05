@@ -17,8 +17,7 @@
           <p class="eyebrow">Deface Watcher</p>
           <h1>{{ app_name }}</h1>
           <p class="subtitle">
-            Kiểm tra nhanh dấu hiệu deface với BiLSTM + Puppeteer. Theo dõi thời gian cào và dự đoán trong một bảng điều
-            khiển gọn gàng.
+            Công cụ kiểm tra nhanh dấu hiệu web defacement bằng mô hình BiLSTM từ nội dung trích xuất theo thời gian thực.
           </p>
         </div>
         <div class="hero-card">
@@ -27,12 +26,12 @@
             <strong>128</strong>
           </div>
           <div class="hero-stat">
-            <span>Pipeline</span>
-            <strong>Puppeteer → Requests</strong>
-          </div>
-          <div class="hero-stat">
             <span>Model</span>
             <strong>BiLSTM</strong>
+          </div>
+          <div class="hero-stat">
+            <span>Mode</span>
+            <strong>Fast Extract</strong>
           </div>
         </div>
       </header>
@@ -58,58 +57,54 @@
         </div>
         <div id="error-message" class="error hidden"></div>
       </section>
-
       <section id="result-container" class="panel result hidden">
         <div class="result-header">
           <div>
-            <h2>Kết quả phân tích</h2>
+            <h2>K?t qu? phân tích</h2>
             <p id="result-url" class="result-url"></p>
           </div>
           <div id="result-badge" class="badge">--</div>
         </div>
         <div class="result-grid">
           <div class="result-card">
-            <h3>Chẩn đoán</h3>
+            <h3>Ch?n đoán</h3>
             <p class="result-status" id="result-status">--</p>
             <p class="result-prob">
-              Xác suất Deface: <span id="result-prob">--</span>
+              Xác su?t Deface: <span id="result-prob">--</span>
             </p>
             <div class="result-meta">
               <div>
-                <span>Nguồn trích xuất</span>
+                <span>Ngu?n trích xu?t</span>
                 <strong id="result-source">--</strong>
               </div>
               <div>
-                <span>Thời gian cào</span>
+                <span>Th?i gian cào</span>
                 <strong><span id="scrape-time">--</span> ms</strong>
               </div>
               <div>
-                <span>Thời gian dự đoán</span>
+                <span>Th?i gian d? đoán</span>
                 <strong><span id="predict-time">--</span> ms</strong>
               </div>
               <div>
-                <span>Tổng thời gian</span>
+                <span>T?ng th?i gian</span>
                 <strong><span id="total-time">--</span> ms</strong>
               </div>
             </div>
             <div id="source-warning" class="warning hidden">
-              Đang dùng fallback Requests. Kết quả có thể thiếu nội dung động.
+              Đang dùng fallback Requests. K?t qu? có th? thi?u n?i dung đ?ng.
             </div>
-          </div>
-          <div class="result-card">
-            <h3>Tiến trình</h3>
             <div class="timeline">
               <div class="timeline-step" id="step-scrape">
                 <span>1</span>
                 <div>
-                  <strong>Cào nội dung</strong>
+                  <strong>Cào n?i dung</strong>
                   <p id="step-scrape-detail">--</p>
                 </div>
               </div>
               <div class="timeline-step" id="step-predict">
                 <span>2</span>
                 <div>
-                  <strong>Dự đoán BiLSTM</strong>
+                  <strong>D? đoán BiLSTM</strong>
                   <p id="step-predict-detail">--</p>
                 </div>
               </div>
@@ -118,43 +113,21 @@
         </div>
 
         <details class="accordion">
-          <summary>Xem văn bản trích xuất</summary>
+          <summary>Xem văn b?n trích xu?t</summary>
           <div class="accordion-toolbar">
             <div class="toolbar-group">
               <button type="button" id="text-copy">Sao chép</button>
-              <button type="button" id="text-download">Tải .txt</button>
-              <button type="button" id="text-fullscreen">Toàn màn hình</button>
+              <button type="button" id="text-download">T?i .txt</button>
+              <button type="button" id="text-fullscreen">Toàn màn h?nh</button>
             </div>
             <div class="toolbar-group toolbar-search">
-              <input type="text" id="text-search" placeholder="Tìm trong văn bản..." />
-              <button type="button" id="text-prev">Trước</button>
-              <button type="button" id="text-next">Sau</button>
-              <span id="text-match-count">0/0</span>
-              <button type="button" id="text-top">Lên đầu</button>
+              <input type="text" id="text-search" placeholder="T?m trong văn b?n..." />
             </div>
-            <label class="toolbar-toggle">
-              <input type="checkbox" id="text-show-full" />
-              <span>Hiện toàn bộ</span>
-            </label>
           </div>
           <p class="accordion-meta" id="text-meta"></p>
           <div class="text-viewer">
             <div id="result-text" class="text-pre"></div>
           </div>
-        </details>
-
-        <details class="accordion">
-          <summary>Xem tokenized preview</summary>
-          <div class="accordion-toolbar">
-            <div class="toolbar-group">
-              <button type="button" id="token-copy">Sao chép</button>
-              <button type="button" id="token-download">Tải .json</button>
-              <button type="button" id="token-toggle-view">Xem JSON</button>
-            </div>
-          </div>
-          <div id="token-stats" class="token-stats hidden"></div>
-          <div id="token-grid" class="token-grid hidden"></div>
-          <pre id="token-preview">--</pre>
         </details>
       </section>
 
