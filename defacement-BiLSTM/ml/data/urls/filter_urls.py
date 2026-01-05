@@ -4,11 +4,13 @@ import requests
 import time
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 
-INPUT_FILE = "defacement_url.txt"
-OUTPUT_FILE = "defacement_url_valid.txt"
-ERROR_FILE = "defacement_url_errors.txt"
+BASE_DIR = Path(__file__).resolve().parent
+INPUT_FILE = BASE_DIR / "defacement_url.txt"
+OUTPUT_FILE = BASE_DIR / "defacement_url_valid.txt"
+ERROR_FILE = BASE_DIR / "defacement_url_errors.txt"
 
 
 TIMEOUT = 3
@@ -38,7 +40,7 @@ def is_url_accessible(url, timeout=TIMEOUT):
 
 def main():
     try:
-        with open(INPUT_FILE, "r", encoding="utf-8") as f:
+        with INPUT_FILE.open("r", encoding="utf-8") as f:
             urls = [line.strip() for line in f if line.strip()]
         print(f"Đã tìm thấy {len(urls)} URLs trong {INPUT_FILE}")
     except FileNotFoundError:
@@ -78,11 +80,11 @@ def main():
     selected = valid_urls
 
     try:
-        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        with OUTPUT_FILE.open("w", encoding="utf-8") as f:
             for u in selected:
                 f.write(u + "\n")
 
-        with open(ERROR_FILE, "w", encoding="utf-8") as f:
+        with ERROR_FILE.open("w", encoding="utf-8") as f:
             for u in error_urls:
                 f.write(u + "\n")
     except IOError as e:
@@ -97,3 +99,4 @@ if __name__ == "__main__":
     main()
     end_time = time.time()
     print(f"Tổng thời gian thực thi: {end_time - start_time:.2f} giây")
+
