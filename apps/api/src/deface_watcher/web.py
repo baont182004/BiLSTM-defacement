@@ -1,4 +1,5 @@
 import logging
+import os
 import warnings
 from flask import Flask
 
@@ -10,8 +11,21 @@ from .routes import ui_bp
 def create_app():
     settings = load_settings()
     configure_logging(settings.log_level)
-    logging.getLogger("werkzeug").setLevel(logging.ERROR)
-    logging.getLogger("werkzeug").disabled = True
+    log_level = os.getenv("LOG_LEVEL", "WARNING").upper()
+    if log_level != "INFO":
+        werk_logger = logging.getLogger("werkzeug")
+        werk_logger.setLevel(logging.ERROR)
+        werk_logger.propagate = False
+        try:
+            from flask.cli import show_server_banner
+            import click
+
+            def quiet_banner(*args, **kwargs):
+                pass
+
+            show_server_banner = quiet_banner
+        except Exception:
+            pass
 
     app = Flask(
         __name__,
