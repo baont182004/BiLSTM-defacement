@@ -53,12 +53,12 @@ def load_settings() -> Settings:
         tokenizer_path=tokenizer_path,
         scraper_js_path=scraper_js_path,
         max_length=128,
-        process_timeout=int(os.getenv("PROCESS_TIMEOUT", "30")),
-        request_timeout=int(os.getenv("REQUEST_TIMEOUT", "15")),
+        process_timeout=int(os.getenv("PROCESS_TIMEOUT", "15")),
+        request_timeout=int(os.getenv("REQUEST_TIMEOUT", "8")),
         max_chars=int(os.getenv("MAX_CHARS", "20000")),
         strict_empty_text=_get_bool_env("STRICT_EMPTY_TEXT", False),
         return_tokens=_get_bool_env("RETURN_TOKENS", False),
-        log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
+        log_level=os.getenv("LOG_LEVEL", "WARNING").upper(),
         request_headers={
             "User-Agent": os.getenv(
                 "REQUEST_UA",
@@ -79,5 +79,5 @@ def configure_logging(level: str) -> None:
 
     logging.basicConfig(
         level=level,
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
+        format="%(levelname)s %(name)s - %(message)s",
     )

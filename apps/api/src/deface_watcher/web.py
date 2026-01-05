@@ -1,3 +1,4 @@
+import logging
 import warnings
 from flask import Flask
 
@@ -8,7 +9,9 @@ from .routes import ui_bp
 
 def create_app():
     settings = load_settings()
-    configure_logging(settings.LOG_LEVEL)
+    configure_logging(settings.log_level)
+    logging.getLogger("werkzeug").setLevel(logging.ERROR)
+    logging.getLogger("werkzeug").disabled = True
 
     app = Flask(
         __name__,

@@ -40,21 +40,8 @@ def predict():
         return jsonify({"error": "Dữ liệu JSON không hợp lệ hoặc thiếu URL.", "request_id": request_id}), 400
 
     try:
-        (
-            text,
-            source,
-            scrape_time_ms,
-            truncated,
-            scrape_error,
-            extraction_meta,
-            source_warning,
-        ) = extract_text(url)
+        text, source, scrape_time_ms, truncated, scrape_error = extract_text(url)
         if text is None:
-            error_message = "Không th? cào d? li?u t? URL này (b? ch?n/timeout/l?i)."
-            if scrape_error == "blocked":
-                error_message = (
-                    "Trang web có cơ chế chống bot hoặc yêu cầu xác minh; không thể trích xuất nội dung."
-                )
             return (
                 jsonify(
                     {
@@ -64,7 +51,6 @@ def predict():
                         "source": source,
                         "scrape_time_ms": scrape_time_ms,
                         "scrape_error": scrape_error,
-                        "extraction_meta": extraction_meta,
                     }
                 ),
                 400,
@@ -89,20 +75,6 @@ def predict():
             "total_time_ms": total_time_ms,
             "request_id": request_id,
         }
-        if extraction_meta:
-            response["extraction_meta"] = extraction_meta
-        if source_warning:
-            response["source_warning"] = source_warning
-
-        logger.info(
-            "predict url=%s source=%s scrape_ms=%s predict_ms=%s status=%s prob=%.4f",
-            url,
-            source,
-            scrape_time_ms,
-            predict_time_ms,
-            status,
-            probability,
-        )
         return jsonify(response)
     except Exception:
         logger.exception("Unhandled error in /predict request_id=%s", request_id)
