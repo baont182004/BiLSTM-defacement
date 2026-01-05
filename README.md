@@ -130,24 +130,15 @@ Output:
 
 ## Chạy API Web (Flask)
 
-Dev (từ root):
+Dev (từ root, không cần PYTHONPATH):
 
 ```powershell
-$env:PYTHONPATH="apps/api/src"
-flask --app deface_watcher.web run --host 0.0.0.0 --port 5000 --no-reload
-```
-
-Dev (từ `apps/api`):
-
-```powershell
-$env:PYTHONPATH="src"
-flask --app deface_watcher.web   run --host 0.0.0.0 --port 5000 --no-reload
+python -m apps.api.dev
 ```
 
 Smoke test:
 
 ```powershell
-$env:PYTHONPATH="apps/api/src"
 python apps/api/smoke_test.py
 ```
 
@@ -161,20 +152,11 @@ curl -X POST http://127.0.0.1:5000/predict \
 
 ## Chạy production (Gunicorn)
 
-Từ `apps/api`:
+Từ root (khởi động rõ ràng, tôn trọng PORT):
 
 ```powershell
-$env:PYTHONPATH="src"
 $env:PORT=5000
-gunicorn -w 2 -b 0.0.0.0:$env:PORT deface_watcher.wsgi:app
-```
-
-Từ root:
-
-```powershell
-$env:PYTHONPATH="apps/api/src"
-$env:PORT=5000
-gunicorn -w 2 -b 0.0.0.0:$env:PORT deface_watcher.wsgi:app
+gunicorn -w 2 -b 0.0.0.0:$env:PORT apps.api.wsgi:app
 ```
 
 ## Cấu hình biến môi trường
@@ -198,7 +180,7 @@ Ghi chú:
   `ml/training/step3_train_model.py` và `apps/api/src/deface_watcher/config.py`.
 - Repo không dùng `NODE_SCRIPT_PATH`. Nếu tài liệu cũ nhắc biến này thì hãy dùng `SCRAPER_JS_PATH`.
 
-Ví dụ đặt biến trên Windows:
+Ví dụ đặt biến trên Windows (tham khảo `.env.example`):
 
 ```powershell
 $env:MODEL_PATH="ml\\artifacts\\bilstm_defacement_model.keras"
