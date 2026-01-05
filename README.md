@@ -141,7 +141,7 @@ Dev (từ `apps/api`):
 
 ```powershell
 $env:PYTHONPATH="src"
-flask --app deface_watcher.web run --host 0.0.0.0 --port 5000 --no-reload
+flask --app deface_watcher.web   run --host 0.0.0.0 --port 5000 --no-reload
 ```
 
 Smoke test:

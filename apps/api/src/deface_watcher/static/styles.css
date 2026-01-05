@@ -456,6 +456,7 @@ pre {
   position: absolute;
   inset: 0;
   background: rgba(8, 12, 14, 0.75);
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   z-index: 1000;
 }

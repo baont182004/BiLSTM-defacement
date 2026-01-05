@@ -1,17 +1,27 @@
-node_modules/
-*.npy
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+.python-version
 __pycache__/
 *.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+dist/
+build/
+*.npy
 
 # Large/raw datasets
 ml/data/raw/rawData.json
 
-# URL lists (optional)
+# URL lists 
 ml/data/urls/normal_url.txt
 ml/data/urls/defacement_url.txt
 
-# Artifacts (uncomment to ignore model outputs)
-# ml/artifacts/
 ml/artifacts/*
 !ml/artifacts/*.png
 !ml/artifacts/*.keras

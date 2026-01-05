@@ -4,12 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ app_name }} - Deface Watcher</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+    <link rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}" />
     <link
       rel="icon"
-      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>DW</text></svg>"
-    />
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>DW</text></svg>" />
   </head>
+
   <body>
     <div class="page">
       <header class="hero">
@@ -17,9 +18,11 @@
           <p class="eyebrow">Deface Watcher</p>
           <h1>{{ app_name }}</h1>
           <p class="subtitle">
-            Công cụ kiểm tra nhanh dấu hiệu web defacement bằng mô hình BiLSTM từ nội dung trích xuất theo thời gian thực.
+            Công cụ kiểm tra nhanh dấu hiệu web defacement bằng mô hình BiLSTM
+            từ nội dung trích xuất theo thời gian thực.
           </p>
         </div>
+
         <div class="hero-card">
           <div class="hero-stat">
             <span>MAX_LENGTH</span>
@@ -39,72 +42,80 @@
       <section class="panel">
         <div class="panel-header">
           <h2>Kiểm tra URL</h2>
-          <p>Nhập URL và theo dõi tiến trình trích xuất nội dung ngay bên dưới.</p>
+          <p>Nhập URL và hệ thống sẽ trích xuất nội dung + dự đoán ngay bên
+            dưới.</p>
         </div>
+
         <form id="predict-form" class="predict-form">
-          <input type="url" id="url-input" placeholder="https://example.com" required />
+          <input type="url" id="url-input" placeholder="https://example.com"
+            required />
           <button type="submit" id="predict-button">
             <span class="button-label">Kiểm tra</span>
             <span class="button-icon">→</span>
           </button>
         </form>
+
         <div id="progress" class="progress hidden">
           <div class="spinner"></div>
           <div>
             <p id="progress-title">Đang xử lý</p>
-            <p id="progress-detail">Chuẩn bị cào dữ liệu...</p>
+            <p id="progress-detail">Chuẩn bị trích xuất nội dung...</p>
           </div>
         </div>
+
         <div id="error-message" class="error hidden"></div>
       </section>
+
       <section id="result-container" class="panel result hidden">
         <div class="result-header">
           <div>
-            <h2>K?t qu? phân tích</h2>
+            <h2>Kết quả phân tích</h2>
             <p id="result-url" class="result-url"></p>
           </div>
           <div id="result-badge" class="badge">--</div>
         </div>
+
         <div class="result-grid">
+          <!-- LEFT: Diagnosis -->
           <div class="result-card">
-            <h3>Ch?n đoán</h3>
+            <h3>Chẩn đoán</h3>
+
             <p class="result-status" id="result-status">--</p>
             <p class="result-prob">
-              Xác su?t Deface: <span id="result-prob">--</span>
+              Xác suất Deface: <span id="result-prob">--</span>
             </p>
+
             <div class="result-meta">
               <div>
-                <span>Ngu?n trích xu?t</span>
+                <span>Nguồn trích xuất</span>
                 <strong id="result-source">--</strong>
               </div>
               <div>
-                <span>Th?i gian cào</span>
-                <strong><span id="scrape-time">--</span> ms</strong>
-              </div>
-              <div>
-                <span>Th?i gian d? đoán</span>
-                <strong><span id="predict-time">--</span> ms</strong>
-              </div>
-              <div>
-                <span>T?ng th?i gian</span>
+                <span>Tổng thời gian</span>
                 <strong><span id="total-time">--</span> ms</strong>
               </div>
             </div>
+
             <div id="source-warning" class="warning hidden">
-              Đang dùng fallback Requests. K?t qu? có th? thi?u n?i dung đ?ng.
+              Đang dùng fallback Requests. Kết quả có thể thiếu nội dung động.
             </div>
+          </div>
+
+          <!-- RIGHT: Progress -->
+          <div class="result-card">
+            <h3>Tiến trình</h3>
             <div class="timeline">
               <div class="timeline-step" id="step-scrape">
                 <span>1</span>
                 <div>
-                  <strong>Cào n?i dung</strong>
+                  <strong>Trích xuất nội dung</strong>
                   <p id="step-scrape-detail">--</p>
                 </div>
               </div>
               <div class="timeline-step" id="step-predict">
                 <span>2</span>
                 <div>
-                  <strong>D? đoán BiLSTM</strong>
+                  <strong>Dự đoán BiLSTM</strong>
                   <p id="step-predict-detail">--</p>
                 </div>
               </div>
@@ -113,38 +124,51 @@
         </div>
 
         <details class="accordion">
-          <summary>Xem văn b?n trích xu?t</summary>
+          <summary>Xem văn bản trích xuất</summary>
+
           <div class="accordion-toolbar">
             <div class="toolbar-group">
               <button type="button" id="text-copy">Sao chép</button>
-              <button type="button" id="text-download">T?i .txt</button>
-              <button type="button" id="text-fullscreen">Toàn màn h?nh</button>
+              <button type="button" id="text-download">Tải .txt</button>
+              <button type="button" id="text-fullscreen">Toàn màn hình</button>
             </div>
+
             <div class="toolbar-group toolbar-search">
-              <input type="text" id="text-search" placeholder="T?m trong văn b?n..." />
+              <input type="text" id="text-search"
+                placeholder="Tìm trong văn bản..."
+                aria-label="Tìm trong văn bản" />
             </div>
           </div>
+
           <p class="accordion-meta" id="text-meta"></p>
+
           <div class="text-viewer">
-            <div id="result-text" class="text-pre"></div>
+            <!-- dùng pre để dễ đọc + scroll -->
+            <pre id="result-text" class="text-pre"></pre>
           </div>
         </details>
       </section>
 
-      <div id="text-modal" class="text-modal" role="dialog" aria-modal="true" aria-hidden="true">
+      <!-- Fullscreen modal -->
+      <div id="text-modal" class="text-modal" role="dialog" aria-modal="true"
+        aria-hidden="true">
         <div class="text-modal__overlay" id="text-modal-overlay"></div>
+
         <div class="text-modal__panel">
           <header class="text-modal__header">
             <h3>Văn bản trích xuất</h3>
             <div class="text-modal__actions">
-              <input type="text" id="text-search-modal" placeholder="Tìm trong văn bản..." />
+              <input type="text" id="text-search-modal"
+                placeholder="Tìm trong văn bản..."
+                aria-label="Tìm trong văn bản" />
               <button type="button" id="text-copy-modal">Sao chép</button>
               <button type="button" id="text-download-modal">Tải .txt</button>
               <button type="button" id="text-close-modal">Đóng</button>
             </div>
           </header>
+
           <div class="text-modal__content">
-            <div id="text-modal-body" class="text-pre"></div>
+            <pre id="text-modal-body" class="text-pre"></pre>
           </div>
         </div>
       </div>

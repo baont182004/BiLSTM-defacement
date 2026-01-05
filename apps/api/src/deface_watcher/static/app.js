@@ -1,86 +1,24 @@
-const form = document.getElementById("predict-form");
-const urlInput = document.getElementById("url-input");
-const button = document.getElementById("predict-button");
-const progress = document.getElementById("progress");
-const progressTitle = document.getElementById("progress-title");
-const progressDetail = document.getElementById("progress-detail");
-const errorMessage = document.getElementById("error-message");
-const resultContainer = document.getElementById("result-container");
-
-const resultBadge = document.getElementById("result-badge");
-const resultStatus = document.getElementById("result-status");
-const resultProb = document.getElementById("result-prob");
-const resultUrl = document.getElementById("result-url");
-const resultSource = document.getElementById("result-source");
-const scrapeTime = document.getElementById("scrape-time");
-const predictTime = document.getElementById("predict-time");
-const totalTime = document.getElementById("total-time");
-const resultText = document.getElementById("result-text");
-const textMeta = document.getElementById("text-meta");
-const sourceWarning = document.getElementById("source-warning");
-const stepScrape = document.getElementById("step-scrape");
-const stepPredict = document.getElementById("step-predict");
-const stepScrapeDetail = document.getElementById("step-scrape-detail");
-const stepPredictDetail = document.getElementById("step-predict-detail");
-
-const textCopy = document.getElementById("text-copy");
-const textDownload = document.getElementById("text-download");
-const textFullscreen = document.getElementById("text-fullscreen");
-const textSearch = document.getElementById("text-search");
-const textModal = document.getElementById("text-modal");
-const textModalOverlay = document.getElementById("text-modal-overlay");
-const textModalBody = document.getElementById("text-modal-body");
-const textSearchModal = document.getElementById("text-search-modal");
-const textCopyModal = document.getElementById("text-copy-modal");
-const textDownloadModal = document.getElementById("text-download-modal");
-const textCloseModal = document.getElementById("text-close-modal");
-
-let fullText = "";
-let searchTerm = "";
-let modalOpen = false;
-let previousBodyOverflow = "";
-let searchTimer = null;
-
-const statusClassMap = {
-  "T?n công Deface": "badge-danger",
-  "B?nh thư?ng": "badge-safe",
-  "Không đ? d? li?u": "badge-warn",
-};
-
-function setLoading(isLoading) {
-  button.disabled = isLoading;
-  button.classList.toggle("loading", isLoading);
-  progress.classList.toggle("hidden", !isLoading);
-  progressTitle.textContent = isLoading ? "Đang x? l?" : "";
-  progressDetail.textContent = isLoading ? "Chu?n b? cào d? li?u..." : "";
+function $(id) {
+  return document.getElementById(id);
 }
-
-function resetResult() {
-  errorMessage.classList.add("hidden");
-  resultContainer.classList.add("hidden");
-  sourceWarning.classList.add("hidden");
-  resultBadge.textContent = "--";
-  resultBadge.className = "badge";
-  resultText.textContent = "";
-  textMeta.textContent = "";
-  stepScrape.classList.remove("done");
-  stepPredict.classList.remove("done");
-  stepScrapeDetail.textContent = "--";
-  stepPredictDetail.textContent = "--";
-  textSearch.value = "";
-  textSearchModal.value = "";
-  fullText = "";
-  searchTerm = "";
-  closeTextModal();
+function setText(el, value) {
+  if (!el) return;
+  el.textContent = value;
 }
-
-function showError(message) {
-  errorMessage.textContent = message;
-  errorMessage.classList.remove("hidden");
+function show(el) {
+  if (!el) return;
+  el.classList.remove("hidden");
 }
-
+function hide(el) {
+  if (!el) return;
+  el.classList.add("hidden");
+}
+function clampNumber(n, fallback = 0) {
+  const x = Number(n);
+  return Number.isFinite(x) ? x : fallback;
+}
 function escapeHtml(value) {
-  return value
+  return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -88,44 +26,145 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function buildHighlightedHtml(text, term) {
-  if (!term) {
-    return escapeHtml(text);
+// ---------- Elements ----------
+const form = $("predict-form");
+const urlInput = $("url-input");
+const button = $("predict-button");
+
+const progress = $("progress");
+const progressTitle = $("progress-title");
+const progressDetail = $("progress-detail");
+const errorMessage = $("error-message");
+
+const resultContainer = $("result-container");
+const resultBadge = $("result-badge");
+const resultStatus = $("result-status");
+const resultProb = $("result-prob");
+const resultUrl = $("result-url");
+const resultSource = $("result-source");
+const totalTime = $("total-time");
+
+const resultText = $("result-text");
+const textMeta = $("text-meta");
+const sourceWarning = $("source-warning");
+
+const stepScrape = $("step-scrape");
+const stepPredict = $("step-predict");
+const stepScrapeDetail = $("step-scrape-detail");
+const stepPredictDetail = $("step-predict-detail");
+
+const textCopy = $("text-copy");
+const textDownload = $("text-download");
+const textFullscreen = $("text-fullscreen");
+const textSearch = $("text-search");
+
+const textModal = $("text-modal");
+const textModalOverlay = $("text-modal-overlay");
+const textModalBody = $("text-modal-body");
+const textSearchModal = $("text-search-modal");
+const textCopyModal = $("text-copy-modal");
+const textDownloadModal = $("text-download-modal");
+const textCloseModal = $("text-close-modal");
+
+// ---------- State ----------
+let fullText = "";
+let searchTerm = "";
+let modalOpen = false;
+let previousBodyOverflow = "";
+let searchTimer = null;
+
+const statusClassMap = {
+  "Tấn công Deface": "badge-danger",
+  "Bình thường": "badge-safe",
+  "Không có dữ liệu": "badge-warn",
+};
+
+// ---------- UI ----------
+function setLoading(isLoading) {
+  if (button) {
+    button.disabled = isLoading;
+    button.classList.toggle("loading", isLoading);
   }
-  const lowerText = text.toLowerCase();
-  const lowerTerm = term.toLowerCase();
+  if (progress) progress.classList.toggle("hidden", !isLoading);
+
+  setText(progressTitle, isLoading ? "Đang xử lý" : "");
+  setText(progressDetail, isLoading ? "Chuẩn bị trích xuất..." : "");
+}
+
+function resetResult() {
+  hide(errorMessage);
+  hide(resultContainer);
+  hide(sourceWarning);
+
+  if (resultBadge) {
+    resultBadge.textContent = "--";
+    resultBadge.className = "badge";
+  }
+
+  setText(resultStatus, "--");
+  setText(resultProb, "--");
+  setText(resultUrl, "");
+  setText(resultSource, "--");
+  setText(totalTime, "--");
+
+  if (stepScrape) stepScrape.classList.remove("done");
+  if (stepPredict) stepPredict.classList.remove("done");
+  setText(stepScrapeDetail, "--");
+  setText(stepPredictDetail, "--");
+
+  if (resultText) resultText.innerHTML = "";
+  setText(textMeta, "");
+
+  if (textSearch) textSearch.value = "";
+  if (textSearchModal) textSearchModal.value = "";
+  fullText = "";
+  searchTerm = "";
+  closeTextModal();
+}
+
+function showError(message) {
+  setText(errorMessage, message);
+  show(errorMessage);
+}
+
+function buildHighlightedHtml(text, term) {
+  const safeText = String(text || "");
+  const safeTerm = String(term || "").trim();
+  if (!safeTerm) return escapeHtml(safeText);
+
+  const lowerText = safeText.toLowerCase();
+  const lowerTerm = safeTerm.toLowerCase();
+
   let startIndex = 0;
   let matchIndex = lowerText.indexOf(lowerTerm, startIndex);
   let html = "";
 
   while (matchIndex !== -1) {
-    html += escapeHtml(text.slice(startIndex, matchIndex));
+    html += escapeHtml(safeText.slice(startIndex, matchIndex));
     html += `<mark class="hit">${escapeHtml(
-      text.slice(matchIndex, matchIndex + term.length)
+      safeText.slice(matchIndex, matchIndex + safeTerm.length)
     )}</mark>`;
-    startIndex = matchIndex + term.length;
+    startIndex = matchIndex + safeTerm.length;
     matchIndex = lowerText.indexOf(lowerTerm, startIndex);
   }
 
-  html += escapeHtml(text.slice(startIndex));
+  html += escapeHtml(safeText.slice(startIndex));
   return html;
 }
 
 function renderTextInto(target) {
-  const textToRender =
-    fullText || (target === textModalBody ? "Không có văn b?n đ? hi?n th?." : "");
+  if (!target) return;
+  const textToRender = fullText || "Không có văn bản để hiển thị.";
   target.innerHTML = buildHighlightedHtml(textToRender, searchTerm);
 }
 
 function renderText() {
   renderTextInto(resultText);
-  if (modalOpen) {
-    renderTextInto(textModalBody);
-  }
+  if (modalOpen) renderTextInto(textModalBody);
 }
 
 function updateSearchTerm(value, syncTarget) {
-  searchTerm = value.trim();
+  searchTerm = String(value || "").trim();
   if (syncTarget && syncTarget.value !== searchTerm) {
     syncTarget.value = searchTerm;
   }
@@ -133,29 +172,22 @@ function updateSearchTerm(value, syncTarget) {
 }
 
 function debounceSearch(value, syncTarget) {
-  if (searchTimer) {
-    clearTimeout(searchTimer);
-  }
-  searchTimer = setTimeout(() => {
-    updateSearchTerm(value, syncTarget);
-  }, 250);
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => updateSearchTerm(value, syncTarget), 200);
 }
 
+// ---------- Clipboard / download ----------
 async function copyText(content) {
-  if (!content) {
-    return;
-  }
+  if (!content) return;
   try {
     await navigator.clipboard.writeText(content);
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
   }
 }
 
 function downloadFile(content, filename, type) {
-  if (!content) {
-    return;
-  }
+  if (!content) return;
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -167,37 +199,38 @@ function downloadFile(content, filename, type) {
   URL.revokeObjectURL(url);
 }
 
+// ---------- Modal ----------
 function openTextModal() {
-  if (modalOpen) {
-    return;
-  }
+  if (!textModal || modalOpen) return;
   modalOpen = true;
+
   textModal.classList.add("is-open");
   textModal.setAttribute("aria-hidden", "false");
+
   previousBodyOverflow = document.body.style.overflow;
   document.body.style.overflow = "hidden";
-  textSearchModal.value = searchTerm;
+
+  if (textSearchModal) textSearchModal.value = searchTerm;
   renderTextInto(textModalBody);
-  if (textSearchModal) {
-    textSearchModal.focus();
-  }
+  if (textSearchModal) textSearchModal.focus();
 }
 
 function closeTextModal() {
-  if (!modalOpen) {
-    return;
-  }
+  if (!textModal || !modalOpen) return;
   modalOpen = false;
+
   textModal.classList.remove("is-open");
   textModal.setAttribute("aria-hidden", "true");
-  document.body.style.overflow = previousBodyOverflow;
+
+  document.body.style.overflow = previousBodyOverflow || "";
   renderTextInto(resultText);
 }
 
+// ---------- Main request ----------
 async function checkUrl(url) {
   setLoading(true);
   resetResult();
-  progressDetail.textContent = "Đang g?i Puppeteer...";
+  setText(progressDetail, "Đang trích xuất nội dung...");
 
   try {
     const response = await fetch("/predict", {
@@ -206,94 +239,94 @@ async function checkUrl(url) {
       body: JSON.stringify({ url }),
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data.error || "Không r? l?i t? máy ch?.");
+      throw new Error(data.error || "Không rõ lỗi từ máy chủ.");
     }
 
-    progressDetail.textContent = "Đang d? đoán BiLSTM...";
-    stepScrape.classList.add("done");
-    stepScrapeDetail.textContent = `Hoàn t?t trong ${data.scrape_time_ms} ms`;
-    stepPredict.classList.add("done");
-    stepPredictDetail.textContent = `Hoàn t?t trong ${data.predict_time_ms} ms`;
+    // Timeline shows detailed timings
+    const scrapeMs = clampNumber(data.scrape_time_ms, 0);
+    const predictMs = clampNumber(data.predict_time_ms, 0);
 
-    resultStatus.textContent = data.status;
-    resultProb.textContent = (data.probability * 100).toFixed(2) + "%";
-    resultUrl.textContent = `URL đ? ki?m tra: ${data.checked_url}`;
-    resultSource.textContent = data.source;
-    scrapeTime.textContent = data.scrape_time_ms;
-    predictTime.textContent = data.predict_time_ms;
-    totalTime.textContent = data.total_time_ms;
+    if (stepScrape) stepScrape.classList.add("done");
+    setText(stepScrapeDetail, `Hoàn tất trong ${scrapeMs} ms`);
 
-    resultBadge.textContent = data.status;
-    resultBadge.classList.add(statusClassMap[data.status] || "badge-neutral");
+    if (stepPredict) stepPredict.classList.add("done");
+    setText(stepPredictDetail, `Hoàn tất trong ${predictMs} ms`);
 
-    if (data.source && data.source.toLowerCase().includes("requests")) {
-      sourceWarning.classList.remove("hidden");
+    const totalMs = clampNumber(data.total_time_ms, scrapeMs + predictMs);
+
+    setText(resultStatus, data.status || "--");
+    setText(resultProb, `${(clampNumber(data.probability, 0) * 100).toFixed(2)}%`);
+    setText(resultUrl, `URL đã kiểm tra: ${data.checked_url || url}`);
+    setText(resultSource, data.source || "--");
+    setText(totalTime, String(totalMs));
+
+    if (resultBadge) {
+      resultBadge.textContent = data.status || "--";
+      resultBadge.className = "badge";
+      resultBadge.classList.add(statusClassMap[data.status] || "badge-neutral");
     }
 
-    fullText = data.extracted_text || "(Không t?m th?y văn b?n)";
+    if (data.source && String(data.source).toLowerCase().includes("requests")) {
+      show(sourceWarning);
+    } else {
+      hide(sourceWarning);
+    }
+
+    fullText = data.extracted_text || "(Không tìm thấy văn bản)";
     renderText();
 
-    const truncatedLabel = data.extracted_text_truncated ? " (đ? c?t)" : "";
-    textMeta.textContent = `Đ? dài: ${fullText.length} k? t?${truncatedLabel}.`;
+    const truncatedLabel = data.extracted_text_truncated ? " (đã cắt)" : "";
+    setText(textMeta, `Độ dài: ${fullText.length} ký tự${truncatedLabel}.`);
 
-    resultContainer.classList.remove("hidden");
+    show(resultContainer);
   } catch (error) {
-    showError(`L?i: ${error.message}`);
+    showError(`Lỗi: ${error.message}`);
   } finally {
     setLoading(false);
   }
 }
 
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const url = urlInput.value.trim();
-  if (!url) {
-    resetResult();
-    showError("Vui l?ng nh?p URL h?p l?.");
-    return;
-  }
-  checkUrl(url);
-});
+// ---------- Events ----------
+if (form) {
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const url = String(urlInput?.value || "").trim();
+    if (!url) {
+      resetResult();
+      showError("Vui lòng nhập URL hợp lệ.");
+      return;
+    }
+    checkUrl(url);
+  });
+}
 
-textSearch.addEventListener("input", (event) => {
-  debounceSearch(event.target.value, textSearchModal);
-});
+if (textSearch) {
+  textSearch.addEventListener("input", (event) => {
+    debounceSearch(event.target.value, textSearchModal);
+  });
+}
+if (textSearchModal) {
+  textSearchModal.addEventListener("input", (event) => {
+    debounceSearch(event.target.value, textSearch);
+  });
+}
 
-textSearchModal.addEventListener("input", (event) => {
-  debounceSearch(event.target.value, textSearch);
-});
+if (textCopy) textCopy.addEventListener("click", () => copyText(fullText));
+if (textDownload) textDownload.addEventListener("click", () => downloadFile(fullText, "extracted_text.txt", "text/plain"));
+if (textFullscreen) textFullscreen.addEventListener("click", openTextModal);
 
-textCopy.addEventListener("click", () => {
-  copyText(fullText);
-});
+if (textModalOverlay) {
+  textModalOverlay.addEventListener("click", (event) => {
+    if (event.target === textModalOverlay) closeTextModal();
+  });
+}
+if (textCloseModal) textCloseModal.addEventListener("click", closeTextModal);
 
-textDownload.addEventListener("click", () => {
-  downloadFile(fullText, "extracted_text.txt", "text/plain");
-});
-
-textFullscreen.addEventListener("click", () => {
-  openTextModal();
-});
-
-textModalOverlay.addEventListener("click", (event) => {
-  if (event.target === textModalOverlay) {
-    closeTextModal();
-  }
-});
-textCloseModal.addEventListener("click", closeTextModal);
-
-textCopyModal.addEventListener("click", () => {
-  copyText(fullText);
-});
-
-textDownloadModal.addEventListener("click", () => {
-  downloadFile(fullText, "extracted_text.txt", "text/plain");
-});
+if (textCopyModal) textCopyModal.addEventListener("click", () => copyText(fullText));
+if (textDownloadModal) textDownloadModal.addEventListener("click", () => downloadFile(fullText, "extracted_text.txt", "text/plain"));
 
 document.addEventListener("keydown", (event) => {
-  if (modalOpen && event.key === "Escape") {
-    closeTextModal();
-  }
+  if (modalOpen && event.key === "Escape") closeTextModal();
 });
