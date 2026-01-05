@@ -119,16 +119,62 @@
 
         <details class="accordion">
           <summary>Xem văn bản trích xuất</summary>
+          <div class="accordion-toolbar">
+            <div class="toolbar-group">
+              <button type="button" id="text-copy">Sao chép</button>
+              <button type="button" id="text-download">Tải .txt</button>
+              <button type="button" id="text-fullscreen">Toàn màn hình</button>
+            </div>
+            <div class="toolbar-group toolbar-search">
+              <input type="text" id="text-search" placeholder="Tìm trong văn bản..." />
+              <button type="button" id="text-prev">Trước</button>
+              <button type="button" id="text-next">Sau</button>
+              <span id="text-match-count">0/0</span>
+              <button type="button" id="text-top">Lên đầu</button>
+            </div>
+            <label class="toolbar-toggle">
+              <input type="checkbox" id="text-show-full" />
+              <span>Hiện toàn bộ</span>
+            </label>
+          </div>
           <p class="accordion-meta" id="text-meta"></p>
-          <pre id="result-text"></pre>
+          <div class="text-viewer">
+            <div id="result-text" class="text-pre"></div>
+          </div>
         </details>
 
         <details class="accordion">
           <summary>Xem tokenized preview</summary>
-          <p class="accordion-meta">Chỉ hiển thị khi bật debug=1 hoặc RETURN_TOKENS=1.</p>
+          <div class="accordion-toolbar">
+            <div class="toolbar-group">
+              <button type="button" id="token-copy">Sao chép</button>
+              <button type="button" id="token-download">Tải .json</button>
+              <button type="button" id="token-toggle-view">Xem JSON</button>
+            </div>
+          </div>
+          <div id="token-stats" class="token-stats hidden"></div>
+          <div id="token-grid" class="token-grid hidden"></div>
           <pre id="token-preview">--</pre>
         </details>
       </section>
+
+      <div id="text-modal" class="text-modal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="text-modal__overlay" id="text-modal-overlay"></div>
+        <div class="text-modal__panel">
+          <header class="text-modal__header">
+            <h3>Văn bản trích xuất</h3>
+            <div class="text-modal__actions">
+              <input type="text" id="text-search-modal" placeholder="Tìm trong văn bản..." />
+              <button type="button" id="text-copy-modal">Sao chép</button>
+              <button type="button" id="text-download-modal">Tải .txt</button>
+              <button type="button" id="text-close-modal">Đóng</button>
+            </div>
+          </header>
+          <div class="text-modal__content">
+            <div id="text-modal-body" class="text-pre"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>
