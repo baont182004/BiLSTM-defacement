@@ -1,102 +1,88 @@
-
-
-import requests
-import time
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+import requests
 
 BASE_DIR = Path(__file__).resolve().parent
 INPUT_FILE = BASE_DIR / "defacement_url.txt"
 OUTPUT_FILE = BASE_DIR / "defacement_url_valid.txt"
 ERROR_FILE = BASE_DIR / "defacement_url_errors.txt"
 
-
 TIMEOUT = 3
-MAX_WORKERS = 10 
+MAX_WORKERS = 10
+REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/121.0.0.0 Safari/537.36"
+    ),
+}
+
 
 def is_url_accessible(url, timeout=TIMEOUT):
-    """
-    Kiểm tra xem URL có thể truy cập được không (status < 400).
-    """
     try:
-
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-
-        resp = requests.get(url, headers=headers, allow_redirects=True, timeout=timeout)
-
-        return resp.status_code < 400
-    except requests.exceptions.Timeout:
-
+        response = requests.get(url, headers=REQUEST_HEADERS, allow_redirects=True, timeout=timeout)
+        return response.status_code < 400
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
         return False
-    except requests.exceptions.ConnectionError:
+    except Exception:
+        return False
 
-        return False
-    except Exception as e:
-        return False
+
+def read_urls():
+    if not INPUT_FILE.exists():
+        print(f"ERROR: Missing input file {INPUT_FILE}")
+        sys.exit(1)
+    with INPUT_FILE.open("r", encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip()]
+
+
+def write_lines(path, items):
+    with path.open("w", encoding="utf-8") as f:
+        for item in items:
+            f.write(item + "\n")
+
 
 def main():
-    try:
-        with INPUT_FILE.open("r", encoding="utf-8") as f:
-            urls = [line.strip() for line in f if line.strip()]
-        print(f"Đã tìm thấy {len(urls)} URLs trong {INPUT_FILE}")
-    except FileNotFoundError:
-        print(f"Lỗi: không tìm thấy file {INPUT_FILE}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Lỗi khi đọc file {INPUT_FILE}: {e}")
-        sys.exit(1)
-
+    urls = read_urls()
     if not urls:
-        print("Tệp đầu vào trống. Kết thúc.")
+        print("Input file is empty. Nothing to do.")
         return
 
+    total_urls = len(urls)
     valid_urls = []
     error_urls = []
-    total_urls = len(urls)
 
+    print(f"Checking {total_urls} URLs with {MAX_WORKERS} workers...")
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         future_to_url = {executor.submit(is_url_accessible, url): url for url in urls}
-        
-        print(f"Bắt đầu kiểm tra {total_urls} URLs với {MAX_WORKERS} luồng...")
-        
-        for i, fut in enumerate(as_completed(future_to_url), start=1):
-            url = future_to_url[fut]
+        for i, future in enumerate(as_completed(future_to_url), start=1):
+            url = future_to_url[future]
             try:
-                ok = fut.result()
-                if ok:
+                if future.result():
                     valid_urls.append(url)
                 else:
                     error_urls.append(url)
-            except Exception as e:
+            except Exception:
                 error_urls.append(url)
-            
+
             if i % 100 == 0 or i == total_urls:
-                print(f"Đã kiểm tra {i}/{total_urls} URLs — Hợp lệ: {len(valid_urls)} — Lỗi: {len(error_urls)}")
+                print(
+                    f"Progress {i}/{total_urls} | valid: {len(valid_urls)} | invalid: {len(error_urls)}"
+                )
 
-    selected = valid_urls
+    write_lines(OUTPUT_FILE, valid_urls)
+    write_lines(ERROR_FILE, error_urls)
 
-    try:
-        with OUTPUT_FILE.open("w", encoding="utf-8") as f:
-            for u in selected:
-                f.write(u + "\n")
+    print("\n--- DONE ---")
+    print(f"Valid URLs saved to: {OUTPUT_FILE}")
+    print(f"Invalid URLs saved to: {ERROR_FILE}")
 
-        with ERROR_FILE.open("w", encoding="utf-8") as f:
-            for u in error_urls:
-                f.write(u + "\n")
-    except IOError as e:
-        print(f"Lỗi khi ghi file: {e}")
-
-    print("\n--- HOÀN THÀNH ---")
-    print(f"Tổng cộng {len(selected)} URLs hợp lệ đã được lưu vào: {OUTPUT_FILE}")
-    print(f"Tổng cộng {len(error_urls)} URLs lỗi/không hợp lệ được ghi vào: {ERROR_FILE}")
 
 if __name__ == "__main__":
     start_time = time.time()
     main()
     end_time = time.time()
-    print(f"Tổng thời gian thực thi: {end_time - start_time:.2f} giây")
-
+    print(f"Elapsed time: {end_time - start_time:.2f} seconds")

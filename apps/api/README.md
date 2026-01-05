@@ -1,13 +1,13 @@
 # Deface Watcher API
 
-## Run
-Dev (from repo root):
+## Chạy ứng dụng
+Dev (từ root):
 ```powershell
 $env:PYTHONPATH="apps/api/src"
 flask --app deface_watcher.web run --host 0.0.0.0 --port 5000 --no-reload
 ```
 
-Dev (from apps/api):
+Dev (từ `apps/api`):
 ```powershell
 $env:PYTHONPATH="src"
 flask --app deface_watcher.web run --host 0.0.0.0 --port 5000 --no-reload
@@ -25,20 +25,20 @@ gunicorn -w 2 -b 0.0.0.0:$env:PORT deface_watcher.wsgi:app
 - `GET /health` health check
 - `POST /predict` JSON `{ "url": "..." }`
 
-Response fields include:
+Response trả về thường bao gồm:
 `status`, `probability`, `checked_url`, `source`, `scrape_time_ms`, `predict_time_ms`.
 
-## Environment
+## Biến môi trường
 - `MODEL_PATH`, `TOKENIZER_PATH`, `SCRAPER_JS_PATH`
-- `MAX_CHARS` (default `20000`)
+- `MAX_CHARS` (mặc định `20000`)
 - `PROCESS_TIMEOUT`, `REQUEST_TIMEOUT`
-- `STRICT_EMPTY_TEXT=1` to return "Khong co du lieu" on empty text
-- `RETURN_TOKENS=1` to include `tokenized_sequence`
-- `LOG_LEVEL` (default `INFO`)
-- `REQUEST_UA` (override User-Agent for requests)
+- `STRICT_EMPTY_TEXT=1` để trả về "Không có dữ liệu" khi text rỗng
+- `RETURN_TOKENS=1` để trả về `tokenized_sequence`
+- `LOG_LEVEL` (mặc định `INFO`)
+- `REQUEST_UA` (ghi đè User-Agent cho requests)
 
-Notes:
-- Flask debug reloader can spawn two processes. Use `--no-reload` to avoid double loads in development.
+Ghi chú:
+- Flask debug reloader có thể chạy hai process. Dùng `--no-reload` để tránh load 2 lần.
 
 ## Smoke test
 ```powershell
