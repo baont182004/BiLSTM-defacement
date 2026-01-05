@@ -3,8 +3,29 @@ import math
 import os
 import random
 import time
+import warnings
 from pathlib import Path
 
+QUIET_TF = os.getenv("QUIET_TF", "1").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def setup_tf_logging(quiet: bool, tf_module=None) -> None:
+    if quiet:
+        os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+        warnings.filterwarnings("ignore", category=UserWarning)
+        warnings.filterwarnings("ignore", category=FutureWarning)
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+    if quiet and tf_module is not None:
+        tf_module.get_logger().setLevel("ERROR")
+        try:
+            import absl.logging as absl_logging
+
+            absl_logging.set_verbosity(absl_logging.ERROR)
+        except Exception:
+            pass
+
+
+setup_tf_logging(QUIET_TF)
 os.environ.setdefault("TF_DETERMINISTIC_OPS", "1")
 
 import matplotlib.pyplot as plt
@@ -12,6 +33,7 @@ import numpy as np
 import tensorflow as tf
 from sklearn.metrics import (
     average_precision_score,
+    classification_report,
     confusion_matrix,
     f1_score,
     matthews_corrcoef,
@@ -23,9 +45,11 @@ from sklearn.metrics import (
 from sklearn.utils.class_weight import compute_class_weight
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.layers import Bidirectional, Dense, Embedding, LSTM, SpatialDropout1D
-from tensorflow.keras.metrics import AUC, Precision, Recall
+from tensorflow.keras.metrics import SparseCategoricalAccuracy
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam
+
+setup_tf_logging(QUIET_TF, tf)
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
@@ -55,6 +79,10 @@ BATCH_SIZE = 64
 EPOCHS = 15
 SEED = 42
 P_MIN = float(os.getenv("P_MIN", "0.80"))
+TRAIN_HISTORY = None
+BEST_VAL_F1 = None
+BEST_F1_THRESHOLD = None
+BEST_RECALL_THRESHOLD = None
 # ----------------
 
 
@@ -136,6 +164,67 @@ def evaluate_at_threshold(probs, y_true, threshold):
     }
 
 
+def print_legacy_test_report(model, x_test, y_test, calibrated_probs, threshold=0.5) -> None:
+    test_loss, test_accuracy = model.evaluate(x_test, y_test, verbose=0)
+    preds = (calibrated_probs >= threshold).astype(int)
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        y_test,
+        preds,
+        average="binary",
+        zero_division=0,
+    )
+    cm = confusion_matrix(y_test, preds, labels=[0, 1])
+    tn, fp, fn, tp = cm.ravel()
+
+    print("")
+    print("================== KẾT QUẢ ĐÁNH GIÁ TRÊN TẬP TEST ==================")
+    print(f"Loss (Mất mát):     {test_loss:.4f}")
+    print(f"Accuracy (Độ chính xác): {test_accuracy * 100:.2f}%")
+    print(f"Precision:          {precision:.4f}")
+    print(f"Recall (Độ nhạy):   {recall:.4f}")
+    print("====================================================================")
+
+    if BEST_VAL_F1 is not None:
+        print(f"best_val_f1: {BEST_VAL_F1:.4f}")
+    if TRAIN_HISTORY is not None and TRAIN_HISTORY.history.get("val_loss"):
+        val_losses = TRAIN_HISTORY.history["val_loss"]
+        best_epoch = int(np.argmin(val_losses)) + 1
+        print(f"best_epoch(val_loss): {best_epoch}")
+    if BEST_F1_THRESHOLD is not None:
+        print(
+            f"best_f1_threshold: {BEST_F1_THRESHOLD['threshold']:.2f} "
+            f"(f1={BEST_F1_THRESHOLD['f1']:.4f})"
+        )
+    if BEST_RECALL_THRESHOLD is not None:
+        print(
+            f"best_recall_threshold: {BEST_RECALL_THRESHOLD['threshold']:.2f} "
+            f"(precision={BEST_RECALL_THRESHOLD['precision']:.4f}, recall={BEST_RECALL_THRESHOLD['recall']:.4f})"
+        )
+
+    print("")
+    print("Báo cáo phân loại (Classification Report):")
+    print(
+        classification_report(
+            y_test,
+            preds,
+            target_names=["Bình thường (0)", "Deface (1)"],
+            digits=4,
+            zero_division=0,
+        )
+    )
+
+    print("Ma trận nhầm lẫn (Confusion Matrix):")
+    print("                 Dự đoán: Bình thường | Dự đoán: Deface")
+    print(f"Thực tế: Bình thường | {tn:7d} | {fp:7d}")
+    print(f"Thực tế: Deface      | {fn:7d} | {tp:7d}")
+
+    print("")
+    print(f"TN: {tn} (Dự đoán đúng bình thường)")
+    print(f"FP: {fp} (Báo động giả)")
+    print(f"FN: {fn} (Bỏ lọt!)")
+    print(f"TP: {tp} (Dự đoán đúng deface)")
+
+
 class F1Callback(tf.keras.callbacks.Callback):
     def __init__(self, x_val, y_val):
         super().__init__()
@@ -200,11 +289,7 @@ model = Sequential(
 model.summary()
 
 metrics = [
-    "accuracy",
-    Precision(name="precision"),
-    Recall(name="recall"),
-    AUC(name="roc_auc", curve="ROC"),
-    AUC(name="pr_auc", curve="PR"),
+    SparseCategoricalAccuracy(name="accuracy"),
 ]
 
 optimizer = Adam(clipnorm=1.0)
@@ -218,12 +303,12 @@ BEST_MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
 f1_callback = F1Callback(X_valid, y_valid)
 callbacks = [
     f1_callback,
-    EarlyStopping(monitor="val_pr_auc", patience=4, mode="max", restore_best_weights=True, verbose=1),
+    EarlyStopping(monitor="val_loss", patience=4, mode="min", restore_best_weights=True, verbose=1),
     ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=2, verbose=1),
     ModelCheckpoint(
         str(BEST_MODEL_FILE),
-        monitor="val_pr_auc",
-        mode="max",
+        monitor="val_loss",
+        mode="min",
         save_best_only=True,
         verbose=1,
     ),
@@ -239,6 +324,8 @@ history = model.fit(
     class_weight=class_weights,
     verbose=1,
 )
+TRAIN_HISTORY = history
+BEST_VAL_F1 = float(f1_callback.best_f1)
 
 training_time = time.time() - start_time
 print(f"Training finished in {training_time:.2f} seconds.")
@@ -251,6 +338,8 @@ valid_probs = get_probs(X_valid)
 test_probs = get_probs(X_test)
 
 best_f1_threshold, best_recall_threshold = scan_thresholds(valid_probs, y_valid)
+BEST_F1_THRESHOLD = best_f1_threshold
+BEST_RECALL_THRESHOLD = best_recall_threshold
 
 calibration = {"enabled": False}
 calibrated_valid = valid_probs
@@ -355,6 +444,8 @@ report["metrics"]["test_summary"] = {
     "f1": float(f1),
     "mcc": float(matthews_corrcoef(y_test, (calibrated_test >= 0.5).astype(int))),
 }
+
+print_legacy_test_report(model, X_test, y_test, calibrated_test, threshold=0.5)
 
 add_curve_plots(calibrated_test, y_test)
 
