@@ -58,22 +58,25 @@ def extract_text(url: str):
     start = time.time()
     try:
         text, error = _run_puppeteer(url)
+        if error:
+            logger.warning("Puppeteer failed: %s", error)
     except FileNotFoundError:
         error = "node_not_found"
         text = None
+        logger.warning("Puppeteer failed: %s", error)
     except subprocess.TimeoutExpired:
         error = "puppeteer_timeout"
         text = None
+        logger.warning("Puppeteer failed: %s", error)
     except Exception:
         error = "puppeteer_error"
         text = None
+        logger.warning("Puppeteer failed: %s", error)
 
     scrape_time_ms = (time.time() - start) * 1000
     if text is not None:
         normalized, truncated = _normalize_text(text, settings.max_chars)
         return normalized, "Puppeteer", round(scrape_time_ms), truncated, None
-
-    logger.warning("Puppeteer failed: %s", error)
 
     start = time.time()
     try:
@@ -87,6 +90,8 @@ def extract_text(url: str):
         error = "requests_error"
     except Exception:
         error = "requests_error"
+
+    logger.warning("Requests fallback failed: %s", error)
 
     scrape_time_ms = (time.time() - start) * 1000
     return None, "Requests", round(scrape_time_ms), False, error
