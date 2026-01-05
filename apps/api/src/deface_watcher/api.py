@@ -50,6 +50,11 @@ def predict():
             source_warning,
         ) = extract_text(url)
         if text is None:
+            error_message = "Không th? cào d? li?u t? URL này (b? ch?n/timeout/l?i)."
+            if scrape_error == "blocked":
+                error_message = (
+                    "Trang web có cơ chế chống bot hoặc yêu cầu xác minh; không thể trích xuất nội dung."
+                )
             return (
                 jsonify(
                     {

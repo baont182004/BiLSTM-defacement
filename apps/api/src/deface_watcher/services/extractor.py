@@ -1,7 +1,11 @@
 import json
 import logging
+import os
+import re
 import subprocess
 import time
+from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -9,6 +13,11 @@ from bs4 import BeautifulSoup
 from ..config import load_settings
 
 MIN_TEXT_LENGTH_BACKEND = 200
+BLOCKED_STATUSES = {403, 429, 503}
+BLOCKED_ERROR_PATTERN = re.compile(
+    r"(captcha|cloudflare|challenge|access denied|forbidden|robot|verify you are human)",
+    re.IGNORECASE,
+)
 
 
 def _normalize_text(text: str, max_chars: int, collapse_whitespace: bool = True):
@@ -30,9 +39,24 @@ def _sanitize_errors(errors):
     return sanitized[:3]
 
 
-def _run_puppeteer(url: str):
+def _is_blocked(puppeteer_meta) -> bool:
+    if not puppeteer_meta:
+        return False
+    status = puppeteer_meta.get("http_status")
+    if status in BLOCKED_STATUSES:
+        return True
+    for err in puppeteer_meta.get("errors") or []:
+        if BLOCKED_ERROR_PATTERN.search(str(err)):
+            return True
+    return False
+
+
+def _run_puppeteer(url: str, extra_env=None):
     settings = load_settings()
     command = ["node", str(settings.scraper_js_path), "--json", url]
+    env = os.environ.copy()
+    if extra_env:
+        env.update(extra_env)
     meta = {
         "ok": False,
         "http_status": None,
@@ -49,6 +73,7 @@ def _run_puppeteer(url: str):
         encoding="utf-8",
         timeout=settings.process_timeout,
         check=False,
+        env=env,
     )
     if result.returncode != 0:
         stderr = (result.stderr or "").strip()
@@ -122,6 +147,70 @@ def _run_fallback(url: str):
     return raw_text, response.status_code, elapsed_ms
 
 
+def _read_latest_debug_html(debug_dir: Path, host: str, start_ts: float):
+    if not debug_dir.exists():
+        return ""
+    candidates = []
+    if host:
+        candidates.extend(debug_dir.glob(f"{host}_*.html"))
+    candidates.extend(debug_dir.glob("*.html"))
+    recent = [path for path in candidates if path.stat().st_mtime >= start_ts - 2]
+    if not recent:
+        return ""
+    latest = max(recent, key=lambda p: p.stat().st_mtime)
+    try:
+        return latest.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return ""
+
+
+def _extract_jsonld_from_html(html: str):
+    if not html:
+        return ""
+    soup = BeautifulSoup(html, "html.parser")
+    texts = []
+    for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
+        raw = script.string or script.get_text()
+        if not raw:
+            continue
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+
+        candidates = data if isinstance(data, list) else [data]
+        for item in candidates:
+            if not isinstance(item, dict):
+                continue
+            for key in ("articleBody", "description", "headline"):
+                value = item.get(key)
+                if isinstance(value, str) and value.strip():
+                    texts.append(value.strip())
+    if not texts:
+        return ""
+    return max(texts, key=len)
+
+
+def _fetch_rendered_html(url: str, errors):
+    settings = load_settings()
+    start_ts = time.time()
+    host = ""
+    try:
+        host = urlparse(url).hostname or ""
+    except Exception:
+        host = ""
+    debug_dir = Path(settings.scraper_js_path).resolve().parent / "debug"
+    try:
+        _run_puppeteer(url, extra_env={"SAVE_HTML": "1", "MIN_TEXT_LEN": str(MIN_TEXT_LENGTH_BACKEND)})
+    except Exception as exc:
+        errors.append(f"jsonld_html:{exc}")
+        return ""
+    return _read_latest_debug_html(debug_dir, host, start_ts)
+
+
 def extract_text(url: str):
     settings = load_settings()
     logger = logging.getLogger(__name__)
@@ -170,15 +259,56 @@ def extract_text(url: str):
             puppeteer_meta.get("timings"),
         )
 
+    blocked = _is_blocked(puppeteer_meta)
+    if extraction_meta["puppeteer"]:
+        extraction_meta["puppeteer"]["blocked"] = blocked
+
     text_len = len(text) if text else 0
     puppeteer_ok = bool(puppeteer_meta and puppeteer_meta.get("ok")) and text_len > 0
+    if blocked:
+        extraction_meta["assessment"] = "blocked"
+        return (
+            None,
+            "Puppeteer",
+            round(scrape_time_ms),
+            False,
+            "blocked",
+            extraction_meta,
+            None,
+        )
+
     if puppeteer_ok:
         normalized, truncated = _normalize_text(text, settings.max_chars, collapse_whitespace=False)
         method = puppeteer_meta.get("method") or "fallback"
         source = f"Puppeteer ({method})"
         scrape_ms = round(puppeteer_meta.get("timings", {}).get("total_ms", scrape_time_ms))
         if text_len < MIN_TEXT_LENGTH_BACKEND:
-            source_warning = "Nội dung trích xuất ngắn; có thể bị chặn/iframe/challenge"
+            extraction_meta["assessment"] = (
+                "weak_extraction" if method in {"iframe", "shadowdom", "treewalker"} else "low_text"
+            )
+            html = _fetch_rendered_html(
+                puppeteer_meta.get("final_url") or url,
+                puppeteer_meta.get("errors") or [],
+            )
+            jsonld_text = _extract_jsonld_from_html(html)
+            if jsonld_text and len(jsonld_text) >= MIN_TEXT_LENGTH_BACKEND:
+                jsonld_normalized, jsonld_truncated = _normalize_text(
+                    jsonld_text, settings.max_chars, collapse_whitespace=True
+                )
+                extraction_meta["puppeteer"]["method_override"] = "jsonld"
+                return (
+                    jsonld_normalized,
+                    "Puppeteer (jsonld)",
+                    scrape_ms,
+                    jsonld_truncated,
+                    None,
+                    extraction_meta,
+                    None,
+                )
+            source_warning = (
+                "Nội dung trích xuất rất ngắn; có thể do trang ít văn bản/consent/iframe. Kết quả dự đoán có thể kém tin cậy."
+                "K?t qu? d? đoán có th? kém tin c?y."
+            )
         if text_len >= MIN_TEXT_LENGTH_BACKEND:
             return (
                 normalized,
@@ -189,7 +319,6 @@ def extract_text(url: str):
                 extraction_meta,
                 source_warning,
             )
-
     logger.warning("Puppeteer failed: %s", error)
 
     start = time.time()
@@ -202,6 +331,12 @@ def extract_text(url: str):
         }
         normalized, truncated = _normalize_text(fallback_text, settings.max_chars, collapse_whitespace=True)
         scrape_time_ms = elapsed_ms
+        if normalized and len(normalized) < MIN_TEXT_LENGTH_BACKEND:
+            source_warning = "Nội dung trích xuất rất ngắn; có thể do trang ít văn bản/consent/iframe. Kết quả dự đoán có thể kém tin cậy."
+            if not extraction_meta.get("assessment"):
+                extraction_meta["assessment"] = "low_text"
+        if normalized and len(normalized) >= MIN_TEXT_LENGTH_BACKEND:
+            source_warning = None
         if normalized:
             if len(normalized) < MIN_TEXT_LENGTH_BACKEND and puppeteer_ok:
                 source_warning = "Nội dung trích xuất ngắn; có thể bị chặn/iframe/challenge"
