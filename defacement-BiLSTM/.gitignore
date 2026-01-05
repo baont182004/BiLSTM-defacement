@@ -1,4 +1,12 @@
-﻿node_modules
-normal_url.txt
-defacement_url.txt
-rawData.json
+node_modules/
+*.npy
+
+# Large/raw datasets
+ml/data/raw/rawData.json
+
+# URL lists (optional)
+ml/data/urls/normal_url.txt
+ml/data/urls/defacement_url.txt
+
+# Artifacts (uncomment to ignore model outputs)
+# ml/artifacts/
