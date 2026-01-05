@@ -1,5 +1,7 @@
 node_modules/
 *.npy
+__pycache__/
+*.pyc
 
 # Large/raw datasets
 ml/data/raw/rawData.json
