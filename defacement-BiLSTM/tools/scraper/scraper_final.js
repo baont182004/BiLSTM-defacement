@@ -1,10 +1,11 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
+const path = require('path');
 
 async function getAndSaveSequentialDefacedUrls() {
 
     const START_ID = 41416014;
-    const OUTPUT_FILE = 'defacement_url.txt';
+    const OUTPUT_FILE = path.resolve(__dirname, '..', '..', 'ml', 'data', 'urls', 'defacement_url.txt');
 
 
     const browser = await puppeteer.launch({
