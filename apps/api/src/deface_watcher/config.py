@@ -54,7 +54,7 @@ def load_settings() -> Settings:
         scraper_js_path=scraper_js_path,
         max_length=128,
         process_timeout=int(os.getenv("PROCESS_TIMEOUT", "15")),
-        request_timeout=int(os.getenv("REQUEST_TIMEOUT", "8")),
+        request_timeout=int(os.getenv("REQUEST_TIMEOUT", "6")),
         max_chars=int(os.getenv("MAX_CHARS", "20000")),
         strict_empty_text=_get_bool_env("STRICT_EMPTY_TEXT", False),
         return_tokens=_get_bool_env("RETURN_TOKENS", False),

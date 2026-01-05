@@ -1,7 +1,7 @@
 const puppeteer = require("puppeteer");
 
 const GOTO_TIMEOUT = Number(process.env.PUPPETEER_GOTO_TIMEOUT_MS || 12000);
-const SETTLE_MS = Number(process.env.PUPPETEER_SETTLE_MS || 300);
+const SETTLE_MS = Number(process.env.PUPPETEER_SETTLE_MS || 250);
 const MAX_CHARS = Number(process.env.MAX_TEXT_LEN || 20000);
 
 function normalizeText(text) {
