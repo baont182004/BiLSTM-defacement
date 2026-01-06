@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      PORT: ${PORT:-8000}
+      HOST: 0.0.0.0
+      RELOAD: "1"
+      DEBUG: "1"
+      PUPPETEER_SKIP_DOWNLOAD: "1"
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "1"
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+    command: python -m apps.api.dev
+    volumes:
+      - ../:/app
+      - scraper_node_modules:/app/tools/scraper/node_modules
+    expose:
+      - "${PORT:-8000}"
+
+  nginx:
+    image: nginx:1.25-alpine
+    depends_on:
+      - app
+    environment:
+      PORT: ${PORT:-8000}
+    ports:
+      - "${PUBLIC_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf.template:ro
+      - ./nginx/entrypoint.sh:/entrypoint.sh:ro
+    command: ["/bin/sh", "/entrypoint.sh"]
+
+volumes:
+  scraper_node_modules:

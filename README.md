@@ -1,215 +1,54 @@
 # Web Defacement Detection (BiLSTM)
 
-## Mục lục
+Ứng dụng học máy phát hiện tấn công thay đổi giao diện (defacement) từ nội dung trang web sử dụng đặc trưng văn bản thuần. Mô hình dùng BiLSTM, dữ liệu lấy từ các URL: defacement thu thập từ Zone-H, normal là các website thông thường.
 
-- Giới thiệu
-- Cấu trúc repo
-- Yêu cầu hệ thống
-- Cài đặt
-- Chạy pipeline huấn luyện
-- Chạy API Web (Flask)
-- Chạy production (Gunicorn)
-- Cấu hình biến môi trường
-- Troubleshooting
-- Quy tắc dữ liệu và git
+## Quy trình dự án
 
-## Giới thiệu
+1. Lọc URL: tổng hợp và làm sạch danh sách `defacement` (Zone-H) và `normal`.
+2. Step 1 – Cào dữ liệu: trích xuất văn bản từ URL (ưu tiên Puppeteer, fallback sang requests).
+3. Step 2 – Tiền xử lý & tokenize: làm sạch dữ liệu và tạo tập train/valid/test.
+4. Step 3 – Huấn luyện: train BiLSTM, xuất model và tokenizer.
+5. Chạy ứng dụng: API nhận URL, trích xuất text, dự đoán và trả kết quả.
 
-Dự án phát hiện web defacement bằng BiLSTM dựa trên văn bản trích xuất từ URL. Dữ liệu được thu thập bằng Puppeteer (phù hợp với trang cần JavaScript) và fallback sang requests khi cần. Pipeline huấn luyện gồm 3 bước: extract -> tokenize -> train; API `/predict` dùng để phân loại URL.
+## Cách sử dụng mô hình
 
-## Cấu trúc repo
+1. Tạo 2 file url:
+   - `ml/data/urls/defacement_url.txt` (zone-H, có công cụ hỗ trợ cào với file scraper_final.js)
+   - `ml/data/urls/normal_url.txt` (các web thông thường)
+2. Chạy Step 1, 2, 3 theo thứ tự raw/processed và artifacts.
 
-- API (deploy web): `apps/api/`
-  - Flask app, services, templates, static: `apps/api/src/deface_watcher/`
-  - WSGI entry: `apps/api/wsgi.py`
-  - Dependencies: `apps/api/requirements.txt`
-  - Smoke test: `apps/api/smoke_test.py`
-- ML (data + training): `ml/`
-  - `ml/training/step1_extract_text.py`
-  - `ml/training/step2_tokenize_data.py`
-  - `ml/training/step3_train_model.py`
-  - `ml/data/urls/{normal_url.txt, defacement_url.txt, filter_urls.py}`
-  - `ml/data/raw/rawData.json`
-  - `ml/data/processed/*.npy`
-  - `ml/artifacts/{bilstm_defacement_model.keras, tokenizer.json, training_history.png, ...}`
-- Scraper (Puppeteer): `tools/scraper/`
-  - `tools/scraper/get_text_puppeteer.js`
-  - `tools/scraper/package.json`, `tools/scraper/package-lock.json`
+## Cách chạy nhanh (local)
 
-## Yêu cầu hệ thống
-
-- Python 3.10+ (khuyến nghị)
-- Node.js 18+ (khuyến nghị) để chạy Puppeteer
-- Windows/Linux: Puppeteer sẽ tự tải Chromium khi `npm ci`. Nếu bị chặn tải về hoặc chạy trên server không có GUI, cần cấu hình lại Puppeteer/Chromium cho phù hợp.
-
-## Cài đặt
-
-Tạo môi trường Python và cài dependencies cho API (dùng chung cho training):
-
-```powershell
-python -m venv .venv
-.venv\Scripts\activate
-cd apps/api
-pip install -r requirements.txt
-```
-
-Cài dependencies cho scraper:
-
-```powershell
-cd tools/scraper
-npm ci
-```
-
-Nếu dùng Linux/macOS:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-cd apps/api
-pip install -r requirements.txt
-```
-
-## Chạy pipeline huấn luyện
-
-Chạy từ root của repo.
-
-### 1) Step 1: Cào dữ liệu
-
-```powershell
-python ml/training/step1_extract_text.py
-```
-
-Input:
-
-- `ml/data/urls/normal_url.txt`
-- `ml/data/urls/defacement_url.txt`
-
-Output:
-
-- `ml/data/raw/rawData.json`
-
-Ghi chú: bước này ưu tiên Puppeteer (`tools/scraper/get_text_puppeteer.js`) và fallback sang requests nếu cần.
-
-### 2) Step 2: Tokenize/tiền xử lý
-
-```powershell
-python ml/training/step2_tokenize_data.py
-```
-
-Input:
-
-- `ml/data/raw/rawData.json`
-
-Output:
-
-- `ml/data/processed/X_train.npy`, `y_train.npy`
-- `ml/data/processed/X_valid.npy`, `y_valid.npy`
-- `ml/data/processed/X_test.npy`, `y_test.npy`
-- `ml/artifacts/tokenizer.json`
-
-### 3) Step 3: Train BiLSTM
-
-```powershell
-python ml/training/step3_train_model.py
-```
-
-Input:
-
-- `ml/data/processed/X_train.npy`, `y_train.npy`
-- `ml/data/processed/X_valid.npy`, `y_valid.npy`
-- `ml/data/processed/X_test.npy`, `y_test.npy`
-
-Output:
-
-- `ml/artifacts/bilstm_defacement_model.keras`
-- `ml/artifacts/training_history.png`
-- `ml/artifacts/metrics_report.json`
-- `ml/artifacts/decision.json`
-- `ml/artifacts/calibration.json`
-- `ml/artifacts/roc_curve.png`, `ml/artifacts/pr_curve.png`
-
-## Chạy API Web (Flask)
-
-Dev (từ root, không cần PYTHONPATH):
+Dev:
 
 ```powershell
 python -m apps.api.dev
 ```
 
-Smoke test:
+Prod (Gunicorn):
 
 ```powershell
-python apps/api/smoke_test.py
-```
-
-Gọi API bằng curl:
-
-```bash
-curl -X POST http://127.0.0.1:5000/predict \
-  -H "Content-Type: application/json" \
-  -d "{\"url\":\"https://example.com\"}"
-```
-
-## Chạy production (Gunicorn)
-
-Từ root (khởi động rõ ràng, tôn trọng PORT):
-
-```powershell
-$env:PORT=5000
+$env:PORT=8000
 gunicorn -w 2 -b 0.0.0.0:$env:PORT apps.api.wsgi:app
 ```
 
-## Cấu hình biến môi trường
+## Docker (khuyến nghị)
 
-Biến được đọc bởi API:
-
-- `MODEL_PATH` (mặc định `ml/artifacts/bilstm_defacement_model.keras`)
-- `TOKENIZER_PATH` (mặc định `ml/artifacts/tokenizer.json`)
-- `SCRAPER_JS_PATH` (mặc định `tools/scraper/get_text_puppeteer.js`)
-- `MAX_CHARS` (mặc định `20000`)
-- `PROCESS_TIMEOUT` (mặc định `30`, giây)
-- `REQUEST_TIMEOUT` (mặc định `15`, giây)
-- `STRICT_EMPTY_TEXT` (nếu `1` sẽ trả về "Không có dữ liệu" khi text rỗng)
-- `RETURN_TOKENS` (nếu `1` sẽ trả về `tokenized_sequence` trong response)
-- `LOG_LEVEL` (mặc định `INFO`)
-- `REQUEST_UA` (ghi đè User-Agent cho requests)
-
-Ghi chú:
-
-- `MAX_LENGTH` hiện là 128 và được hard-code trong `ml/training/step2_tokenize_data.py`,
-  `ml/training/step3_train_model.py` và `apps/api/src/deface_watcher/config.py`.
-- Repo không dùng `NODE_SCRIPT_PATH`. Nếu tài liệu cũ nhắc biến này thì hãy dùng `SCRAPER_JS_PATH`.
-
-Ví dụ đặt biến trên Windows (tham khảo `.env.example`):
-
-```powershell
-$env:MODEL_PATH="ml\\artifacts\\bilstm_defacement_model.keras"
-$env:TOKENIZER_PATH="ml\\artifacts\\tokenizer.json"
-$env:SCRAPER_JS_PATH="tools\\scraper\\get_text_puppeteer.js"
-$env:PROCESS_TIMEOUT=45
-$env:REQUEST_TIMEOUT=20
-```
-
-Ví dụ đặt biến trên Linux/macOS:
+Dev:
 
 ```bash
-export MODEL_PATH="ml/artifacts/bilstm_defacement_model.keras"
-export TOKENIZER_PATH="ml/artifacts/tokenizer.json"
-export SCRAPER_JS_PATH="tools/scraper/get_text_puppeteer.js"
-export PROCESS_TIMEOUT=45
-export REQUEST_TIMEOUT=20
+docker compose -f deploy/docker-compose.yml up --build
 ```
 
-## Troubleshooting
+Prod:
 
-- Không có Node.js: bước extract sẽ fail khi gọi Puppeteer; fallback requests có thể hoạt động nhưng kết quả có thể thiếu nội dung.
-- Puppeteer bị chặn/timeout: thử tăng `PROCESS_TIMEOUT`, giảm `MAX_WORKERS` (ở step1) hoặc chạy trên máy có kết nối ổn định.
-- Trang web JS-heavy: requests không lấy được nội dung, cần Puppeteer và Chromium.
-- Flask debug load 2 lần: sử dụng `--no-reload` để tránh chạy 2 process.
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.prod.yml up --build -d
+```
 
-## Quy tắc dữ liệu và git
+Tài liệu Docker chi tiết: `deploy/DOCKER.md`.
 
-- `node_modules/`, `__pycache__/`, `*.npy` thường không commit.
-- `ml/data/raw/rawData.json` có thể rất lớn, nên xem xét trước khi commit.
-- `ml/data/urls/*.txt` có thể bỏ qua nếu không muốn chia sẻ danh sách URL.
-- Trong `ml/artifacts/`, chỉ commit file `*.png` để theo dõi biểu đồ; các file khác nên bỏ qua.
+## Lưu ý ngắn
+
+- Kết quả phụ thuộc vào chất lượng URL đầu vào (defacement/normal).
+- Nếu cần tuỳ biến, chỉ cần quan tâm `PORT` và đường dẫn model/tokenizer.

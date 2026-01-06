@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  app:
+    environment:
+      PORT: ${PORT:-8000}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+      HOST: 0.0.0.0
+      DEBUG: "0"
+      RELOAD: "0"
+      PUPPETEER_SKIP_DOWNLOAD: "1"
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "1"
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+    command: sh -c "gunicorn -w ${WEB_CONCURRENCY:-2} -k gthread -b 0.0.0.0:${PORT} apps.api.wsgi:app"
+    volumes: []
+    restart: unless-stopped
+
+  nginx:
+    restart: unless-stopped
