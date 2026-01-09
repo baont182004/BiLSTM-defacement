@@ -16,16 +16,6 @@ def create_app():
         werk_logger = logging.getLogger("werkzeug")
         werk_logger.setLevel(logging.ERROR)
         werk_logger.propagate = False
-        try:
-            from flask.cli import show_server_banner
-            import click
-
-            def quiet_banner(*args, **kwargs):
-                pass
-
-            show_server_banner = quiet_banner
-        except Exception:
-            pass
 
     app = Flask(
         __name__,
